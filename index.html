@@ -1086,7 +1086,7 @@ function findTarget(b, T) {
 // ---------- terräng ----------
 const hv = (x, y) => { if (x < 0 || y < 0 || x >= W || y >= H) return 0; const v = ter[y * W + x]; return v >= ROCK ? 13 : v; };
 function renderTerrain() {
-  const t = terC.getContext('2d'), SH = PAL.sh, HI = PAL.hi, seed = LEVELS[levelIdx].seed;
+  const t = terC.getContext('2d'), SH = PAL.sh, HI = PAL.hi, seed = LEVELS[levelIdx].seed, K = CS / 16;   // K: the pixel sizes of shadows and edges were made for 16-pixel squares
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const h = ter[y * W + x];
     if (h >= ROCK) { t.fillStyle = PAL.rim; t.fillRect(x * CS, y * CS, CS, CS); continue; }
@@ -1098,21 +1098,21 @@ function renderTerrain() {
     const h = hv(x, y);
     const wd = x > 0 ? hv(x - 1, y) - h : 0, nd = y > 0 ? hv(x, y - 1) - h : 0;
     if (wd > 0) {
-      const g = t.createLinearGradient(x * CS, 0, x * CS + 14, 0);
+      const g = t.createLinearGradient(x * CS, 0, x * CS + 14 * K, 0);
       g.addColorStop(0, `rgba(${SH},${Math.min(0.55, 0.2 + 0.06 * wd)})`); g.addColorStop(1, `rgba(${SH},0)`);
-      t.fillStyle = g; t.fillRect(x * CS, y * CS, 14, CS);
+      t.fillStyle = g; t.fillRect(x * CS, y * CS, 14 * K, CS);
     }
     if (nd > 0) {
-      const g = t.createLinearGradient(0, y * CS, 0, y * CS + 14);
+      const g = t.createLinearGradient(0, y * CS, 0, y * CS + 14 * K);
       g.addColorStop(0, `rgba(${SH},${Math.min(0.55, 0.2 + 0.06 * nd)})`); g.addColorStop(1, `rgba(${SH},0)`);
-      t.fillStyle = g; t.fillRect(x * CS, y * CS, CS, 14);
+      t.fillStyle = g; t.fillRect(x * CS, y * CS, CS, 14 * K);
     }
     t.fillStyle = `rgba(${HI},.16)`;
-    if (x > 0 && hv(x - 1, y) < h) t.fillRect(x * CS, y * CS, 2, CS);
-    if (y > 0 && hv(x, y - 1) < h) t.fillRect(x * CS, y * CS, CS, 2);
+    if (x > 0 && hv(x - 1, y) < h) t.fillRect(x * CS, y * CS, 2 * K, CS);
+    if (y > 0 && hv(x, y - 1) < h) t.fillRect(x * CS, y * CS, CS, 2 * K);
     t.fillStyle = `rgba(${SH},.4)`;
-    if (x + 1 < W && hv(x + 1, y) < h) t.fillRect(x * CS + CS - 1, y * CS, 1, CS);
-    if (y + 1 < H && hv(x, y + 1) < h) t.fillRect(x * CS, y * CS + CS - 1, CS, 1);
+    if (x + 1 < W && hv(x + 1, y) < h) t.fillRect(x * CS + CS - K, y * CS, K, CS);
+    if (y + 1 < H && hv(x, y + 1) < h) t.fillRect(x * CS, y * CS + CS - K, CS, K);
   }
 }
 
@@ -1316,6 +1316,7 @@ function drawFloodLines() {       // very thin black line where the flood steps 
     if (y + 1 < H && ter[i + W] === ter[i] && lvA[i] !== lvA[i + W]) ctx.fillRect(x * CS, (y + 1) * CS - 1, CS, 1);
   }
 }
+const KK = CS / 16;                          // edge and shadow pixel sizes were made for 16-pixel squares
 function drawFloodShading() {                // flood is marked by a light pink rim along its edge (cliffs have dark cast shadows, so the two can't be mixed up)
   ctx.fillStyle = 'rgba(255,205,255,.6)';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
