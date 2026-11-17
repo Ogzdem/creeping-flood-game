@@ -1152,31 +1152,31 @@ function drawBuilding(b, ghost, ok, icon) {
   const col = ghost ? (ok === true ? '#4fd1c5' : ok === 'warn' ? '#ffc247' : '#e05252') : (on ? '#cfe9f2' : '#6c7683');
   ctx.fillStyle = '#10161d'; ctx.strokeStyle = col; ctx.lineWidth = 2;
   const hs = T.w * CS / 2 - 1.5, u = hs / 14;
-  const plate = () => { ctx.beginPath(); ctx.roundRect(-hs, -hs, hs * 2, hs * 2, 5); ctx.fillStyle = '#10161d'; ctx.fill(); ctx.stroke(); };
-  const bolts = () => { ctx.fillStyle = col; for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.beginPath(); ctx.arc(sx * (hs - 5), sy * (hs - 5), 2, 0, 7); ctx.fill(); } };
+  const plate = () => {}, bolts = () => {};              // no square plate and no bolts any more: every building has its own shape
+  const dark = 'rgba(12,18,26,.82)', disc = r => { ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fillStyle = dark; ctx.fill(); ctx.stroke(); };
   switch (b.type) {
     case 'command': ctx.scale(T.w * CS / 128, T.h * CS / 128); drawShip(col, on); break;
     case 'relay': {
       plate(); bolts(); ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; const cy3 = (hs - 12) / 3;
-      ctx.beginPath(); ctx.moveTo(0, -hs + 6); ctx.lineTo(hs - 6, hs - 9); ctx.lineTo(-hs + 6, hs - 9); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -hs + 4); ctx.lineTo(hs - 4, hs - 7); ctx.lineTo(-hs + 4, hs - 7); ctx.closePath(); ctx.fillStyle = dark; ctx.fill(); ctx.stroke();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, cy3, 3.5 * u, 0, 7); ctx.fill();
       if (on) { const p = (tick % 45) / 45; ctx.globalAlpha = 1 - p; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, cy3, 3.5 * u + p * 11 * u, 0, 7); ctx.stroke(); }
     } break;
-    case 'collector':
-      plate(); bolts(); ctx.lineWidth = 1; ctx.globalAlpha *= 0.5; ctx.beginPath(); ctx.moveTo(-hs + 5, 0); ctx.lineTo(hs - 5, 0); ctx.moveTo(0, -hs + 5); ctx.lineTo(0, hs - 5); ctx.stroke(); ctx.globalAlpha = A;
+    case 'collector':                                   // a circle with a turning ring
+      ctx.lineWidth = 2; disc(hs * 0.92); ctx.lineWidth = 1; ctx.globalAlpha *= 0.45; ctx.beginPath(); ctx.moveTo(-hs * 0.7, 0); ctx.lineTo(hs * 0.7, 0); ctx.moveTo(0, -hs * 0.7); ctx.lineTo(0, hs * 0.7); ctx.stroke(); ctx.globalAlpha = A;
       ctx.rotate(on ? tick * 0.04 : 0); ctx.lineWidth = 3; ctx.strokeStyle = on ? '#ffd34d' : col;
-      ctx.beginPath(); ctx.arc(0, 0, hs * 0.45, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-hs + 8, 0); ctx.lineTo(hs - 8, 0); ctx.stroke(); break;
+      ctx.beginPath(); ctx.arc(0, 0, hs * 0.45, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-hs * 0.62, 0); ctx.lineTo(hs * 0.62, 0); ctx.stroke(); break;
     case 'blaster':
-      plate(); bolts(); ctx.fillStyle = '#1c2631'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, hs * 0.55, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 2; disc(hs * 0.92); ctx.fillStyle = '#1c2631'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, hs * 0.5, 0, 7); ctx.fill(); ctx.stroke();
       ctx.rotate(b.ang || 0); ctx.lineWidth = 7; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(hs - 1, 0); ctx.stroke(); break;
     case 'mortar':
-      plate(); bolts(); ctx.fillStyle = '#1c2631'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, hs * 0.75, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 2; disc(hs * 0.96); ctx.fillStyle = '#1c2631'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, hs * 0.72, 0, 7); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(0, 0, hs * 0.42, 0, 7); ctx.stroke(); ctx.rotate(b.ang || 0); ctx.fillStyle = col; ctx.fillRect(0, -7, hs * 0.95, 14); break;
     case 'booster': {                                   // red diamond with double chevron
       const rc = ghost ? col : (on ? '#ff5d5d' : col);
       plate(); bolts(); ctx.strokeStyle = rc; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.moveTo(0, -hs + 6); ctx.lineTo(hs - 6, 0); ctx.lineTo(0, hs - 6); ctx.lineTo(-hs + 6, 0); ctx.closePath();
-      ctx.fillStyle = on ? 'rgba(255,93,93,.22)' : 'rgba(120,120,120,.15)'; ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -hs + 3); ctx.lineTo(hs - 3, 0); ctx.lineTo(0, hs - 3); ctx.lineTo(-hs + 3, 0); ctx.closePath();
+      ctx.fillStyle = dark; ctx.fill(); ctx.fillStyle = on ? 'rgba(255,93,93,.22)' : 'rgba(120,120,120,.15)'; ctx.fill(); ctx.stroke();
       ctx.lineWidth = 2.5; ctx.beginPath();
       ctx.moveTo(-5 * u, -3.5 * u); ctx.lineTo(-1.5 * u, 0); ctx.lineTo(-5 * u, 3.5 * u);
       ctx.moveTo(1.5 * u, -3.5 * u); ctx.lineTo(5 * u, 0); ctx.lineTo(1.5 * u, 3.5 * u); ctx.stroke();
@@ -1197,19 +1197,20 @@ function drawBuilding(b, ghost, ok, icon) {
       ctx.restore();
     } break;
     case 'reactor': {                                   // orange glowing core
-      plate(); bolts(); const lit = icon || (on && !ghost), g2 = ctx.createRadialGradient(0, 0, 1, 0, 0, hs * 0.55);
+      ctx.lineWidth = 2; disc(hs * 0.92); const lit = icon || (on && !ghost), g2 = ctx.createRadialGradient(0, 0, 1, 0, 0, hs * 0.55);
       g2.addColorStop(0, lit ? '#fff2c2' : '#7a6a4a'); g2.addColorStop(.5, lit ? '#ffab3d' : '#5a4a30'); g2.addColorStop(1, 'rgba(255,140,40,0)');
       ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(0, 0, hs * 0.55, 0, 7); ctx.fill(); ctx.strokeStyle = lit ? '#ffcf7a' : col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, hs * 0.36, 0, 7); ctx.stroke();
     } break;
-    case 'storage': {                                   // green square, fills with stored energy
-      const sc = ghost ? col : (on ? '#59e07a' : col), q2 = hs - 8, inner = q2 * 2 - 4, f = icon ? 0.6 : (on && !ghost) ? Math.min(1, energy / cap) : 0;
-      plate(); bolts(); ctx.strokeStyle = sc; ctx.lineWidth = 2.5; ctx.strokeRect(-q2, -q2, q2 * 2, q2 * 2);
-      ctx.fillStyle = 'rgba(89,224,122,.55)'; ctx.fillRect(-q2 + 2, q2 - 2 - inner * f, inner, inner * f);
+    case 'storage': {                                   // a hexagon that fills with stored energy
+      const sc = ghost ? col : (on ? '#59e07a' : col), f = icon ? 0.6 : (on && !ghost) ? Math.min(1, energy / cap) : 0;
+      const hexP = r => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const an = Math.PI / 6 + i * Math.PI / 3; ctx.lineTo(Math.cos(an) * r, Math.sin(an) * r); } ctx.closePath(); };
+      hexP(hs * 0.92); ctx.fillStyle = dark; ctx.fill(); ctx.strokeStyle = sc; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.save(); hexP(hs * 0.74); ctx.clip(); ctx.fillStyle = 'rgba(89,224,122,.55)'; const fh = hs * 1.48; ctx.fillRect(-hs, hs * 0.74 - fh * f, hs * 2, fh * f + 2); ctx.restore();
     } break;
   }
   ctx.restore();
   if (b.off && !ghost && !icon) {                         // a turret that is switched off is dimmed and shows a power symbol
-    ctx.save(); ctx.translate(px, py); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(-hs, -hs, hs * 2, hs * 2);
+    ctx.save(); ctx.translate(px, py); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.arc(0, 0, hs * 0.95, 0, 7); ctx.fill();
     ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 2, hs * 0.35, -1.0, 4.14); ctx.moveTo(0, -hs * 0.45); ctx.lineTo(0, -hs * 0.05); ctx.stroke(); ctx.restore();
   }
   if (ghost || icon) return;
