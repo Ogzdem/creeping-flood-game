@@ -1934,7 +1934,12 @@ addEventListener('keydown', e => { if (e.key === 'Escape') optClose(); });
 addEventListener('pointerdown', () => MUSIC.apply()); addEventListener('keydown', () => MUSIC.apply());
 
 // ---------- level editor (open the game with #dev): move the base, the flood sources and the portal sources, save, and send the layout to Claude ----------
-const DEFAULT_LAYOUTS = {};      // layouts made with the editor that are built into the game: { 'Map name': { base: [x, y], sources: [[x, y]], portals: [[x, y]] } }
+const DEFAULT_LAYOUTS = {
+  'Basin': { size: [70, 50], base: [54, 35], sources: [[38, 3], [3, 28], [4, 6]], portals: [[57, 21], [18, 40], [20, 7]], gate: [35.5, 24.6] },
+  'Badlands': { size: [70, 50], base: [6, 13], sources: [[44, 46], [64, 27], [62, 43]], portals: [[36, 19], [46, 28], [52, 20]], gate: [30.2, 37] },
+  'Terraces': { size: [70, 50], base: [55, 39], sources: [[3, 43], [21, 3], [3, 18], [4, 5]], portals: [[19, 22], [26, 40], [63, 3]], gate: [47.5, 20.8] },
+  'Fortress': { size: [70, 50], base: [6, 22], sources: [[56, 25], [51, 18], [51, 32]], portals: [[25, 24], [40, 24], [40, 13]], gate: [34, 25.7] }
+};      // layouts made with the editor that are built into the game: { 'Map name': { size, base: [x, y], sources: [[x, y]], portals: [[x, y]], gate: [x, y] } }
 let ed = null;                   // the editor's state while state === 'edit'
 const edEl = document.getElementById('edit'), edInfo = document.getElementById('edInfo'), edText = document.getElementById('edText');
 const edItems = () => [...emitters.map(e => ({ kind: 'source', ref: e })), ...buildings.filter(b => b.type === 'command' || b.type === 'portal').map(b => ({ kind: b.type === 'command' ? 'base' : 'portal', ref: b })), ...(ed && ed.gate ? [{ kind: 'gate', ref: ed.gate }] : [])];
