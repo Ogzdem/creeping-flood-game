@@ -109,6 +109,8 @@
   #opt label { display:flex; flex-direction:column; gap:4px; margin:10px 0; color:var(--dim); } #opt input[type=range] { width:100%; } #opt select { background:#0e1319; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:4px 6px; font:inherit; }
   #opt .fbn { color:var(--dim); font-size:12px; }
   #msg { z-index:36; }
+  #quick { position:absolute; right:10px; top:10px; display:none; gap:6px; z-index:31; } #quick button { padding:6px 10px; }
+  #opt .muterow { display:flex; gap:8px; margin:8px 0 2px; } #opt .muterow button { flex:1; padding:6px 8px; font-size:12.5px; display:flex; align-items:center; justify-content:center; gap:6px; }
   #edit { position:absolute; left:10px; top:10px; width:330px; display:none; z-index:45; background:rgba(14,19,25,.94); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:12.5px; }
   #edit .edh { display:flex; align-items:center; gap:8px; cursor:move; } #edit .edh button { margin-left:auto; padding:2px 8px; font-size:12px; } #edit.min { width:auto; opacity:.8; } #edit.min > :not(.edh) { display:none; }
   #edit .edr { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0; } #edit .edr button { padding:3px 8px; font-size:12px; } #edit #edMap { color:var(--dim); margin-left:6px; } #edInfo { color:var(--dim); line-height:1.45; }
@@ -160,12 +162,14 @@
     <div class="edr"><button id="edSave">Save</button><button id="edSend">Send to Claude</button><button id="edText2">Show as text</button><button id="edReset">Reset</button><button id="edClose">Close</button></div>
     <div id="edInfo"></div><textarea id="edText" rows="6" readonly style="display:none"></textarea></div>
   <div id="opt"><div class="fbh"><b>Options</b><span></span><button id="optClose" title="Close">&#10005;</button></div>
+    <div class="muterow"><button id="optSnd"></button><button id="optMusB"></button></div>
     <label>Music volume<input type="range" id="optMus" min="0" max="100"></label>
     <label>Sound volume<input type="range" id="optSfx" min="0" max="100"></label>
     <label>Music track<select id="optTrack"><option value="0">Off</option><option value="1">Drift</option><option value="2">Nebula</option><option value="3">Skirmish</option><option value="4">Siege</option></select></label>
     <div class="fbn">The game is paused while this window is open.</div></div>
   <div id="msg"></div>
   <div id="home"></div>
+  <div id="quick"><button id="qSound" title="Sound effects on/off"></button><button id="qMusic" title="Music on/off"></button></div>
   <div id="coord"></div>
   <div id="testinfo"></div>
   <div id="help"><div class="hp"><div class="hpimg"><img id="hpImg" alt=""></div><div class="hptx"><h2 id="hpT"></h2><ul id="hpB"></ul></div></div>
@@ -187,7 +191,7 @@
     <div class="box spore" id="sporeBox"><span class="lbl">Spore Attack</span><span style="font-size:15px;font-weight:600;opacity:.55">--:--</span></div>
   </div>
   <div class="box" id="ctl"><div class="g">
-    <button id="bPause" title="Pause (space)"></button><button id="bSound" title="Sound (coming soon)"></button>
+    <button id="bPause" title="Pause (space)"></button><button id="bSound" title="Sound effects on/off"></button><button id="bMusic" title="Music on/off"></button>
     <button id="b1" class="sel">x1</button><button id="b2">x2</button><button id="b4">x4</button>
   </div></div>
   <button id="bMenu" title="Menu">Menu</button>
@@ -1426,13 +1430,17 @@ const ICON = {
   pause: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="3.5" height="12" fill="currentColor"/><rect x="9.5" y="2" width="3.5" height="12" fill="currentColor"/></svg>',
   play: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z" fill="currentColor"/></svg>',
   sound: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5c1.3 1.3 1.3 3.7 0 5M12.8 3.8c2.3 2.3 2.3 6.1 0 8.4" stroke="currentColor" fill="none" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  music: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 12V3.5l7-1.7v8.4" stroke="currentColor" fill="none" stroke-width="1.4"/><circle cx="4.5" cy="12.2" r="2" fill="currentColor"/><circle cx="11.5" cy="10.2" r="2" fill="currentColor"/></svg>',
+  musicOff: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 12V3.5l7-1.7v8.4" stroke="currentColor" fill="none" stroke-width="1.4"/><circle cx="4.5" cy="12.2" r="2" fill="currentColor"/><circle cx="11.5" cy="10.2" r="2" fill="currentColor"/><path d="M1.5 1.5l13 13" stroke="#ff6b6b" stroke-width="1.8" stroke-linecap="round"/></svg>',
   mute: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5l4 5M15 5.5l-4 5" stroke="#ff6b6b" stroke-width="1.6" stroke-linecap="round"/></svg>'
 };
-let muted = false, lastIcons = '';
+let muted = false, musicMuted = false, lastIcons = '';   // muted = sound effects, musicMuted = the music: two separate switches
 function setIcons() {
-  const k = (paused ? 'p' : 'r') + (muted ? 'm' : 's'); if (k === lastIcons) return; lastIcons = k;
-  document.getElementById('bPause').innerHTML = paused ? ICON.play : ICON.pause;
-  document.getElementById('bSound').innerHTML = muted ? ICON.mute : ICON.sound;
+  const k = (paused ? 'p' : 'r') + (muted ? 'm' : 's') + (musicMuted ? 'M' : 'S'); if (k === lastIcons) return; lastIcons = k;
+  const snd = muted ? ICON.mute : ICON.sound, mus = musicMuted ? ICON.musicOff : ICON.music, set = (id, h) => { const e = document.getElementById(id); if (e) e.innerHTML = h; };
+  set('bPause', paused ? ICON.play : ICON.pause);
+  set('bSound', snd); set('qSound', snd); set('bMusic', mus); set('qMusic', mus);            // the same two switches in the bottom bar, on the start page ...
+  set('optSnd', snd + ' Sound effects ' + (muted ? 'off' : 'on')); set('optMusB', mus + ' Music ' + (musicMuted ? 'off' : 'on'));   // ... and in Options: always in step
 }
 function updateButtons() {
   setIcons();
@@ -1501,7 +1509,11 @@ document.getElementById('b1').onclick = () => setSpeed(1);
 document.getElementById('b2').onclick = () => setSpeed(2);
 document.getElementById('b4').onclick = () => setSpeed(4);
 document.getElementById('bPause').onclick = () => paused = !paused;
-document.getElementById('bSound').onclick = () => { muted = !muted; if (!muted) SFX.unlock(); MUSIC.apply(true); };   // sound comes later
+function saveMute() { store.set('floodline_mute', { sfx: muted, music: musicMuted }); lastIcons = ''; setIcons(); }
+function toggleSfx() { muted = !muted; if (!muted) SFX.unlock(); saveMute(); }                     // sound effects only
+function toggleMusic() { musicMuted = !musicMuted; SFX.unlock(); MUSIC.apply(true); saveMute(); }   // the music only
+for (const id of ['bSound', 'qSound', 'optSnd']) document.getElementById(id).onclick = toggleSfx;
+for (const id of ['bMusic', 'qMusic', 'optMusB']) document.getElementById(id).onclick = toggleMusic;
 const menuEl = document.getElementById('menu'), menuBtn = document.getElementById('bMenu');
 menuBtn.onclick = e => { document.getElementById('bEditor').style.display = DEV && state === 'play' && !LEVELS[levelIdx].test ? '' : 'none'; document.getElementById('bRestart').style.display = document.getElementById('bExit').style.display = state === 'home' ? 'none' : ''; menuEl.classList.toggle('open'); e.stopPropagation(); };
 menuEl.onclick = () => menuEl.classList.remove('open');
@@ -1744,7 +1756,7 @@ const MUSIC = (() => {
     if (!setup()) return; if (ac.state === 'suspended') ac.resume();
     const want = store.get('floodline_music', 1);
     if (want !== cur) { stop(); if (want) { chain(); TRACK[want](); } cur = want; }
-    const target = want && !muted ? LEVEL * vols().music : 0;
+    const target = want && !musicMuted ? LEVEL * vols().music : 0;
     bus.gain.cancelScheduledValues(ac.currentTime); bus.gain.setValueAtTime(target, ac.currentTime);   // no fades at all: volume, mute and track changes happen at once
   }
   function setTrack(n) { store.set('floodline_music', n); apply(); }
@@ -1753,6 +1765,7 @@ const MUSIC = (() => {
 const vols = () => Object.assign({ music: 0.8, sfx: 1 }, store.get('floodline_vol', {}));
 function setVol(k, v) { const o = vols(); o[k] = v; store.set('floodline_vol', o); if (k === 'sfx') SFX.setVol(v); else MUSIC.apply(true); }
 SFX.setVol(vols().sfx);
+{ const m = store.get('floodline_mute', {}); muted = !!m.sfx; musicMuted = !!m.music; lastIcons = ''; setIcons(); }   // remembered from last time
 const optEl = document.getElementById('opt'); let optWasPaused = false;
 function optOpen() {
   if (optEl.style.display === 'block') { optClose(); return; }
@@ -1808,7 +1821,7 @@ function drawEditorOverlay() {
   ctx.setLineDash([]);
 }
 function enterEditor() {
-  fbClose(); loadLevel(levelIdx); state = 'edit'; setHud(false); ed = { tool: 'move', drag: null, changed: false };
+  fbClose(); loadLevel(levelIdx); state = 'edit'; setHud(false); document.getElementById('quick').style.display = 'none'; ed = { tool: 'move', drag: null, changed: false };
   edEl.style.display = 'block'; edEl.classList.remove('min'); edText.style.display = 'none'; document.getElementById('edMap').textContent = LEVELS[levelIdx].name;
   document.querySelectorAll('#edit [data-t]').forEach(b => b.classList.toggle('sel', b.dataset.t === 'move')); edStatus('Drag items to move them. Rings: green = flat ground.');
 }
@@ -1906,7 +1919,7 @@ function pumpPreviews() {                                  // a little picture o
   state = 'home'; if (homeEl.querySelector('.maps')) renderMaps();
   setTimeout(pumpPreviews, 40);
 }
-function setHud(on) { for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; }   // the build bar and Menu belong to the map, not the start page
+function setHud(on) { for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; document.getElementById('quick').style.display = on ? 'none' : 'flex'; }   // on the start page the two sound switches sit in the corner instead   // the build bar and Menu belong to the map, not the start page
 function showHome(view) {
   setHud(false); fbClose(); hideMsg(); state = 'home'; tool = null; sel = null; moving = null; homeEl.style.display = 'flex';
   if (view === 'maps') renderMaps(); else renderTitle();
