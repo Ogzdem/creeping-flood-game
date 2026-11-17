@@ -263,7 +263,7 @@ const FLOOD_VIS = 0.02;   // the thinnest flood there is: anything less is not d
 const COLLECT_PER_CELL = 0.001;   // the original gives 0.004 per square; its maps are 70 squares wide and ours 140, so our squares are half as wide   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
 const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.08, LEAK = 0.02;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
 const TYPES = {
-  command:   { name: 'Ouroboros City', w: 10, h: 10, cost: 0, link: 10, hp: 450, ext: true },
+  command:   { name: 'Ouroboros City', w: 14, h: 14, cost: 0, link: 12, hp: 450, ext: true },
   collector: { name: 'Collector',   w: 5, h: 5, key: 1, cost: 10, time: 6,  link: 10, greenR: 8.3,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
   relay:     { name: 'Relay',       w: 5, h: 5, key: 2, cost: 20, time: 10, link: 10, relayLink: 22, hp: 70, ext: true, noGreen: true, info: 'Reaches far – but only to other Relays' },
   storage:   { name: 'Storage',     w: 5, h: 5, key: 3, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
@@ -524,9 +524,10 @@ function sourceCount() {
   // V = how much flood it takes to fill the map up to its highest ground, edge = share of cells next to a level change (rugged = slower flood)
   return Math.max(3, Math.min(6, Math.round(3 + (V / (F * F) - 6500) / 1500 + 4 * (edges / total - 0.2))));
 }
+let GATE = null;                                          // where the big portal opens (set by a layout made with the editor), otherwise between the totems
 const PA = (TYPES.portal.w >> 1) + 1;                     // a Totem's anchor lies PA squares up and left of its centre
 function loadLevel(i) {
-  levelIdx = i; const L = LEVELS[i]; const R = rng(L.seed);
+  levelIdx = i; GATE = null; const L = LEVELS[i]; const R = rng(L.seed);
   const G = Object.assign({ s1: 18, s2: 9, mix: 0.7, off: 0.25, gain: 9, maxLevel: 5, minArea: 130 }, L.gen);   // terrain shape of this map
   G.s1 *= F; G.s2 *= F; G.minArea *= F * F;                  // the same terrain shapes, just on a bigger map
   PAL = PALETTES[L.palette || 'gray'];
@@ -602,6 +603,7 @@ function loadLevel(i) {
     addBuilding('command', LAY.base[0], LAY.base[1]);
     for (const [x, y] of LAY.sources) emitters.push({ x, y, sup: 0, rate: EMITTER_RATE, ph: R() * 6, start: 0 });
     for (const [x, y] of LAY.portals) addBuilding('portal', x, y);
+    if (LAY.gate) GATE = [LAY.gate[0], LAY.gate[1]];
     renderTerrain(); hideMsg(); setPanel(); updateButtons(); return;
   }
   if (L.place) {                                          // special maps say where the base, the flood sources and the portal sources go; each is moved to the nearest flat ground
@@ -642,7 +644,7 @@ function loadLevel(i) {
       return 12;
     };
     let best = null;
-    for (const need of [9, 7, 5, 3, 0]) {
+    for (const need of [12, 9, 7, 4, 0]) {
       let bs = -Infinity;
       for (let yy = 5; yy < H - BT.h - 6; yy++) for (let xx = 5; xx < W - BT.w - 6; xx++) {
         if (!flatAt(xx, yy, BT.w, BT.h)) continue;
@@ -1008,7 +1010,8 @@ function step() {
 function startEscape() {
   state = 'escape'; tool = null; moving = null; sel = null; setPanel();
   const base = buildings.find(b => b.type === 'command'), bc = center(base), ps = buildings.filter(b => b.type === 'portal').map(center);
-  const gx = ps.reduce((t, p) => t + p[0], 0) / ps.length, gy = ps.reduce((t, p) => t + p[1], 0) / ps.length;   // the portal opens between the portal sources
+  let gx = ps.reduce((t, p) => t + p[0], 0) / ps.length, gy = ps.reduce((t, p) => t + p[1], 0) / ps.length;   // the portal opens between the totems ...
+  if (GATE) { gx = GATE[0]; gy = GATE[1]; }                                                                        // ... unless the map says where
   const px = Math.max(9, Math.min(W - 9, gx)), py = Math.max(9, Math.min(H - 9, gy)), dist = Math.hypot(px - bc[0], py - bc[1]);
   const fl = Math.max(1.2, Math.min(5, dist / 22));                                  // flight time in seconds: further away takes longer
   esc = { t: 0, fl, dur: 1.5 + fl + 0.2, base, bx: bc[0], by: bc[1], px, py, entered: false };
@@ -1161,25 +1164,25 @@ function drawShip(col, on) {
 function drawBuilding(b, ghost, ok, icon) {
   const T = TYPES[b.type], [cx, cy] = center(b), px = cx * CS, py = cy * CS, on = icon || (b.online && !(b.busy > 0) && !b.constructing);
   const A = (ghost ? 0.5 : 1) * alphaMul;   // a building under construction is drawn solid (and standing still: animations only run when it is online)
-  ctx.save(); ctx.translate(px, py); ctx.globalAlpha = A;
+  ctx.save(); ctx.translate(px, py); ctx.globalAlpha = A; ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 5;   // a soft shadow keeps the shapes readable on any ground
   const col = ghost ? (ok === true ? '#4fd1c5' : ok === 'warn' ? '#ffc247' : '#e05252') : (on ? '#cfe9f2' : '#6c7683');
   ctx.fillStyle = '#10161d'; ctx.strokeStyle = col; ctx.lineWidth = 2;
   const hs = T.w * CS / 2 - 1.5, u = hs / 14;
   const plate = () => {}, bolts = () => {};              // no square plate and no bolts any more: every building has its own shape
-  const dark = 'rgba(12,18,26,.82)', disc = r => { ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fillStyle = dark; ctx.fill(); ctx.stroke(); };
+  const dark = 'rgba(12,18,26,.82)', disc = r => {};     // no background disc behind the buildings: each one is just its own shape
   switch (b.type) {
     case 'command': ctx.scale(T.w * CS / 128, T.h * CS / 128); drawCity(col, on); break;
     case 'relay': {
       plate(); bolts(); ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; const cy3 = (hs - 12) / 3;
-      ctx.beginPath(); ctx.moveTo(0, -hs + 4); ctx.lineTo(hs - 4, hs - 7); ctx.lineTo(-hs + 4, hs - 7); ctx.closePath(); ctx.fillStyle = dark; ctx.fill(); ctx.stroke();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, cy3, 3.5 * u, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, -hs + 4); ctx.lineTo(hs - 4, hs - 7); ctx.lineTo(-hs + 4, hs - 7); ctx.closePath(); ctx.fillStyle = ghost ? 'rgba(79,209,197,.2)' : on ? '#4fb8b0' : '#5a6570'; ctx.fill(); ctx.strokeStyle = ghost ? col : '#05080c'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = on ? '#16204a' : '#2a3140'; ctx.beginPath(); ctx.arc(0, cy3, 3.5 * u, 0, 7); ctx.fill(); ctx.strokeStyle = col;
       if (on) { const p = (tick % 45) / 45; ctx.globalAlpha = 1 - p; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, cy3, 3.5 * u + p * 11 * u, 0, 7); ctx.stroke(); }
     } break;
     case 'collector': {                                 // concentric rings with a dot in the middle
-      const r = hs * 0.92, ac = ghost ? col : (on ? '#4fd1c5' : col);
-      ctx.lineWidth = 2; disc(r); ctx.strokeStyle = ac; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(0, 0, r * 0.68, 0, 7); ctx.stroke(); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, r * 0.4, 0, 7); ctx.stroke();
-      ctx.fillStyle = on ? '#ffd34d' : col; ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, 7); ctx.fill();
-      if (on) { const p = (tick % 60) / 60; ctx.globalAlpha = (1 - p) * 0.6; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * 0.4 + p * r * 0.5, 0, 7); ctx.stroke(); }
+      const r = hs * 0.92, f1 = ghost ? 'rgba(79,209,197,.22)' : on ? '#2f93a3' : '#4a5560', f2 = ghost ? 'rgba(79,209,197,.2)' : on ? '#8fe3e0' : '#6c7683';
+      ctx.strokeStyle = ghost ? col : '#05080c'; ctx.lineWidth = 2.5; ctx.fillStyle = f1; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = f2; ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 7); ctx.fill(); ctx.fillStyle = on ? '#16204a' : '#2a3140'; ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, 7); ctx.fill();
+      if (on) { const p = (tick % 60) / 60; ctx.globalAlpha = (1 - p) * 0.6; ctx.strokeStyle = '#8fe3e0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * 0.62 + p * r * 0.35, 0, 7); ctx.stroke(); }
     } break;
     case 'blaster': {                                   // three lobes around a hub and a barrel
       const lc = ghost ? col : (on ? '#8fd0ff' : col);
@@ -1222,11 +1225,9 @@ function drawBuilding(b, ghost, ok, icon) {
       for (const a2 of [Math.PI / 4, -Math.PI / 4]) { ctx.save(); ctx.rotate(a2); ctx.beginPath(); ctx.ellipse(0, 0, hs * 0.82, hs * 0.38, 0, 0, 7); ctx.stroke(); ctx.restore(); }
       ctx.save(); ctx.rotate(Math.PI / 4); ctx.fillStyle = lit ? '#ff5a2a' : '#6a5a50'; ctx.fillRect(-hs * 0.16, -hs * 0.16, hs * 0.32, hs * 0.32); ctx.restore();
     } break;
-    case 'storage': {                                   // a hexagon that fills with stored energy
-      const sc = ghost ? col : (on ? '#59e07a' : col), f = icon ? 0.6 : (on && !ghost) ? Math.min(1, energy / cap) : 0;
-      const hexP = r => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const an = Math.PI / 6 + i * Math.PI / 3; ctx.lineTo(Math.cos(an) * r, Math.sin(an) * r); } ctx.closePath(); };
-      hexP(hs * 0.92); ctx.fillStyle = dark; ctx.fill(); ctx.strokeStyle = sc; ctx.lineWidth = 2.5; ctx.stroke();
-      ctx.save(); hexP(hs * 0.74); ctx.clip(); ctx.fillStyle = 'rgba(89,224,122,.55)'; const fh = hs * 1.48; ctx.fillRect(-hs, hs * 0.74 - fh * f, hs * 2, fh * f + 2); ctx.restore();
+    case 'storage': {                                   // a green hexagon
+      ctx.beginPath(); for (let i = 0; i < 6; i++) { const an = Math.PI / 6 + i * Math.PI / 3; ctx.lineTo(Math.cos(an) * hs * 0.92, Math.sin(an) * hs * 0.92); } ctx.closePath();
+      ctx.fillStyle = ghost ? 'rgba(79,209,197,.22)' : on ? '#3fe05a' : '#4d6a55'; ctx.fill(); ctx.strokeStyle = ghost ? col : '#05080c'; ctx.lineWidth = 3; ctx.stroke();
     } break;
   }
   ctx.restore();
@@ -1896,24 +1897,27 @@ addEventListener('pointerdown', () => MUSIC.apply()); addEventListener('keydown'
 const DEFAULT_LAYOUTS = {};      // layouts made with the editor that are built into the game: { 'Map name': { base: [x, y], sources: [[x, y]], portals: [[x, y]] } }
 let ed = null;                   // the editor's state while state === 'edit'
 const edEl = document.getElementById('edit'), edInfo = document.getElementById('edInfo'), edText = document.getElementById('edText');
-const edItems = () => [...emitters.map(e => ({ kind: 'source', ref: e })), ...buildings.filter(b => b.type === 'command' || b.type === 'portal').map(b => ({ kind: b.type === 'command' ? 'base' : 'portal', ref: b }))];
-const edCenter = it => it.kind === 'source' ? [it.ref.x + .5, it.ref.y + .5] : center(it.ref);
+const edItems = () => [...emitters.map(e => ({ kind: 'source', ref: e })), ...buildings.filter(b => b.type === 'command' || b.type === 'portal').map(b => ({ kind: b.type === 'command' ? 'base' : 'portal', ref: b })), ...(ed && ed.gate ? [{ kind: 'gate', ref: ed.gate }] : [])];
+const edCenter = it => it.kind === 'source' ? [it.ref.x + .5, it.ref.y + .5] : it.kind === 'gate' ? [it.ref.x, it.ref.y] : center(it.ref);
 function edFlat(it) {                                      // is the ground under it one flat level?
+  if (it.kind === 'gate') return true;
   let cs = [];
   if (it.kind === 'source') { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) cs.push([it.ref.x + dx, it.ref.y + dy]); } else cs = tcells(it.ref.type, it.ref.x, it.ref.y);
   const lv = new Set(cs.map(([x, y]) => (x < 0 || y < 0 || x >= W || y >= H) ? ROCK : ter[y * W + x])); return lv.size === 1 && !lv.has(ROCK);
 }
 function edHit(c) {
+  if (ed && ed.gate && Math.hypot(ed.gate.x - c.fx, ed.gate.y - c.fy) <= 4) return { kind: 'gate', ref: ed.gate };
   for (const e of emitters) if (Math.hypot(e.x + .5 - c.fx, e.y + .5 - c.fy) <= 2.5) return { kind: 'source', ref: e };
   for (const b of buildings) if (b.type === 'command' || b.type === 'portal') { const [cx, cy] = center(b), T = TYPES[b.type]; if (Math.abs(cx - c.fx) <= T.w / 2 + 0.5 && Math.abs(cy - c.fy) <= T.h / 2 + 0.5) return { kind: b.type === 'command' ? 'base' : 'portal', ref: b }; }
   return null;
 }
 function edMove(it, tx, ty) {                              // put an item with its centre at (tx, ty)
+  if (it.kind === 'gate') { it.ref.x = Math.max(5, Math.min(W - 5, tx)); it.ref.y = Math.max(5, Math.min(H - 5, ty)); return; }
   if (it.kind === 'source') { it.ref.x = Math.max(3, Math.min(W - 4, Math.floor(tx))); it.ref.y = Math.max(3, Math.min(H - 4, Math.floor(ty))); return; }
   const b = it.ref, T = TYPES[b.type], [ax, ay] = anchorFor(b.type, tx, ty); removeBuilding(b);
   b.x = Math.max(1, Math.min(W - 2 - T.w, ax)); b.y = Math.max(1, Math.min(H - 2 - T.h, ay)); placeBuilding(b);
 }
-function edLayout() { const b = buildings.find(x => x.type === 'command'); return { base: [b.x, b.y], sources: emitters.map(e => [e.x, e.y]), portals: buildings.filter(x => x.type === 'portal').map(p => [p.x, p.y]) }; }
+function edLayout() { const b = buildings.find(x => x.type === 'command'); return { base: [b.x, b.y], sources: emitters.map(e => [e.x, e.y]), portals: buildings.filter(x => x.type === 'portal').map(p => [p.x, p.y]), gate: ed && ed.gate ? [Math.round(ed.gate.x * 10) / 10, Math.round(ed.gate.y * 10) / 10] : undefined }; }
 function edObject() {                                      // the layout plus a few numbers that describe its "feel"
   const lay = edLayout(), L = LEVELS[levelIdx], b = buildings.find(x => x.type === 'command'), bc = center(b), D = (p, q) => Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]));
   const ps = buildings.filter(x => x.type === 'portal').map(center), lvl = ([x, y]) => ter[Math.floor(y) * W + Math.floor(x)] / 2;
@@ -1925,15 +1929,16 @@ function edStatus(extra) {
 }
 function drawEditorOverlay() {
   for (const it of edItems()) {
-    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 6.2 : it.kind === 'portal' ? 3.4 : 2.9) * CS;
-    ctx.lineWidth = 3; ctx.strokeStyle = edFlat(it) ? 'rgba(143,227,154,.95)' : 'rgba(255,90,90,.95)'; ctx.setLineDash(ed.drag && ed.drag.ref === it.ref ? [] : [9, 6]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r, 0, 7); ctx.stroke();
+    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 8.4 : it.kind === 'gate' ? 4.4 : it.kind === 'portal' ? 3.4 : 2.9) * CS;
+    ctx.lineWidth = 3; ctx.strokeStyle = it.kind === 'gate' ? 'rgba(111,227,255,.95)' : edFlat(it) ? 'rgba(143,227,154,.95)' : 'rgba(255,90,90,.95)'; ctx.setLineDash(ed.drag && ed.drag.ref === it.ref ? [] : [9, 6]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r, 0, 7); ctx.stroke();
+    if (it.kind === 'gate') { ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r * 0.45, 0, 7); ctx.stroke(); ctx.fillStyle = 'rgba(111,227,255,.95)'; ctx.font = '600 15px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('GATE', cx * CS, cy * CS - r - 6); }
   }
   ctx.setLineDash([]);
 }
 function enterEditor() {
-  fbClose(); loadLevel(levelIdx); state = 'edit'; setHud(false); document.getElementById('quick').style.display = 'none'; ed = { tool: 'move', drag: null, changed: false };
+  fbClose(); loadLevel(levelIdx); state = 'edit'; setHud(false); document.getElementById('quick').style.display = 'none'; ed = { tool: 'move', drag: null, changed: false }; { const pc = buildings.filter(b => b.type === 'portal').map(center); ed.gate = GATE ? { x: GATE[0], y: GATE[1] } : { x: pc.reduce((t, p) => t + p[0], 0) / pc.length, y: pc.reduce((t, p) => t + p[1], 0) / pc.length }; }   // the gate starts between the totems
   edEl.style.display = 'block'; edEl.classList.remove('min'); edText.style.display = 'none'; document.getElementById('edMap').textContent = LEVELS[levelIdx].name;
-  document.querySelectorAll('#edit [data-t]').forEach(b => b.classList.toggle('sel', b.dataset.t === 'move')); edStatus('Drag items to move them. Rings: green = flat ground.');
+  document.querySelectorAll('#edit [data-t]').forEach(b => b.classList.toggle('sel', b.dataset.t === 'move')); edStatus('Drag items to move them. Green rings = flat ground. The blue ring is where the big portal opens.');
 }
 function leaveEditor() {
   if (ed.changed && !confirm('Leave without saving the changes?')) return;
@@ -1958,7 +1963,7 @@ cv.addEventListener('mousedown', e => {
   if (ed.tool === 'move') { if (hit) { const [cx, cy] = edCenter(hit); ed.drag = Object.assign(hit, { off: [c.fx - cx, c.fy - cy] }); } }
   else if (ed.tool === 'src') { emitters.push({ x: Math.max(3, Math.min(W - 4, c.x)), y: Math.max(3, Math.min(H - 4, c.y)), sup: 0, rate: EMITTER_RATE, ph: Math.random() * 6, start: 0 }); ed.changed = true; edStatus('Flood source added.'); }
   else if (ed.tool === 'por') { addBuilding('portal', c.x - PA, c.y - PA); ed.changed = true; edStatus('Totem added.'); }
-  else if (ed.tool === 'del' && hit) { if (hit.kind === 'base') { edStatus('The base can&rsquo;t be deleted.'); return; } if (hit.kind === 'source') emitters.splice(emitters.indexOf(hit.ref), 1); else removeBuilding(hit.ref); ed.changed = true; edStatus('Deleted.'); }
+  else if (ed.tool === 'del' && hit) { if (hit.kind === 'base' || hit.kind === 'gate') { edStatus('The base and the gate can&rsquo;t be deleted.'); return; } if (hit.kind === 'source') emitters.splice(emitters.indexOf(hit.ref), 1); else removeBuilding(hit.ref); ed.changed = true; edStatus('Deleted.'); }
 });
 cv.addEventListener('mousemove', e => { if (state === 'edit' && ed.drag) { const c = cellAt(e); edMove(ed.drag, c.fx - ed.drag.off[0], c.fy - ed.drag.off[1]); ed.changed = true; edStatus(); } });
 addEventListener('mouseup', () => { if (state === 'edit' && ed && ed.drag) { ed.drag = null; edStatus(); } });
