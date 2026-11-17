@@ -1494,13 +1494,11 @@ function draw() {
       ctx.beginPath(); ctx.moveTo(gc[0], gc[1]); ctx.lineTo(bx * CS, by * CS); ctx.stroke(); ctx.setLineDash([]);
     }
     if (T.ext && ok !== false) {                          // an extender can't be reached through a turret: show it in red where the preview is next to one
-      let shown = false;
-      for (const b of buildings) {
+            for (const b of buildings) {
         if ((moving && b === moving.b) || TYPES[b.type].ext || !b.online || !linkedTo(b, gt, ax, ay)) continue;
         const [bx, by] = center(b); ctx.strokeStyle = 'rgba(255,90,90,.95)'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(gc[0], gc[1]); ctx.lineTo(bx * CS, by * CS); ctx.stroke(); ctx.setLineDash([]);
-        const mx = (gc[0] + bx * CS) / 2, my = (gc[1] + by * CS) / 2; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(mx - 6, my - 6); ctx.lineTo(mx + 6, my + 6); ctx.moveTo(mx + 6, my - 6); ctx.lineTo(mx - 6, my + 6); ctx.stroke(); shown = true;
+        const mx = (gc[0] + bx * CS) / 2, my = (gc[1] + by * CS) / 2; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(mx - 6, my - 6); ctx.lineTo(mx + 6, my + 6); ctx.moveTo(mx + 6, my - 6); ctx.lineTo(mx - 6, my + 6); ctx.stroke();
       }
-      if (shown) { ctx.fillStyle = 'rgba(255,140,140,.95)'; ctx.font = '600 13px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(linked ? 'No build link through turrets' : 'Not connected: build energy can’t pass through turrets', gc[0], gc[1] - T.h * CS / 2 - 12); }
     }
     if (moving) { const m = moving.b, Tm = TYPES[m.type], [mx, my] = m.flying ? flyPos(m) : [m.x, m.y]; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5; ctx.strokeRect((mx + .5) * CS - 2, (my + .5) * CS - 2, Tm.w * CS + 4, Tm.h * CS + 4); ctx.setLineDash([]); }
     drawBuilding({ type: gt, x: ax, y: ay, ang: 0, hp: 1, online: true }, true, ok);
