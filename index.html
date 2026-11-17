@@ -255,13 +255,13 @@ const ROCK = 99, TPS = 30;
 const HEAL_BASE = 3;                    // the base heals slowly: 3 hp per ball, a ball every second at most (and never while flood lies on it or while it flies)
 const HEAL_COST = 1, HEAL_AMT = 10;   // one green ball repairs 10 hp and costs 1 energy
 const FLOODSMOKE = 'hsla(285,25%,80%,';
-const BURST_SEC = 2, WAVE_AMOUNT = 10;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
+const BURST_SEC = 2, WAVE_AMOUNT = 6;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
 const BALL = 1;   // energy in every ball (building, ammunition and repairs are all 1 energy per ball)
 const FLOOD_IDLE_SEC = 10;   // invisible flood that lies completely still for this long dries up
 const FLOOD_HIDE = 0.012;   // a cell that is already visible stays visible down to this depth, so thin flood at the edge doesn't flicker on and off
 const FLOOD_VIS = 0.02;   // the thinnest flood there is: anything less is not drawn, not shot at, doesn't flow and doesn't hurt. Everything at or above it is all of those.
 const COLLECT_PER_CELL = 0.004;   // the original's number: energy per second for every square of green area   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
-const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.02, LEAK = 0.005;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
+const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.01, LEAK = 0.0025;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
 const TYPES = {
   command:   { name: 'Ouroboros City', w: 6, h: 6, cost: 0, link: 5, hp: 450, ext: true },
   collector: { name: 'Collector',   w: 2, h: 2, key: 1, cost: 10, time: 6,  link: 5, greenR: 4.5,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
@@ -269,8 +269,8 @@ const TYPES = {
   storage:   { name: 'Storage',     w: 2, h: 2, key: 3, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
   booster:   { name: 'Speed',       w: 2, h: 2, key: 4, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
   reactor:   { name: 'Reactor',     w: 2, h: 2, key: 5, cost: 40, time: 20, hp: 80, yield: 0.3, info: 'Makes energy on its own, needs no green area' },
-  blaster:   { name: 'Blaster',     w: 2, h: 2, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 6,  cd: 0.16, dmg: 0.5, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
-  mortar:    { name: 'Mortar',      w: 2, h: 2, key: 7, cost: 50, time: 15, hp: 140, range: 9, cd: 1.0, dmg: 2, splash: 3, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
+  blaster:   { name: 'Blaster',     w: 2, h: 2, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 6,  cd: 0.225, dmg: 0.5, dmgScale: 0.71, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
+  mortar:    { name: 'Mortar',      w: 2, h: 2, key: 7, cost: 50, time: 15, hp: 140, range: 9, cd: 1.41, dmg: 2, dmgScale: 0.71, splash: 3, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
   portal:    { name: 'Totem', w: 2, h: 2, cost: 10, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 5, info: 'Build it up to escape' }
 };
 // ---------- hand-made terrain for the special maps (levels 0..10 in steps of 2: never a jump of more than one level) ----------
@@ -982,7 +982,7 @@ function step() {
     if (b.type === 'blaster') {
       effects.push({ k: 'beam', x1: bcx, y1: bcy, x2: tx + .5, y2: ty + .5, t: 0.1, max: 0.1 }); SFX.blaster(panOf(bcx));
       {                                                         // shallow flood: 1 ccc on eight cells; deeper flood: 2 ccc on the target and 1 ccc on six neighbours (at most 8 ccc a shot)
-        const CCC = 2 * TS, lvB = ter[b.y * W + b.x], deep = cr[ty * W + tx] > CCC + 1e-6;
+        const CCC = 2 * TS * (T.dmgScale || 1), lvB = ter[b.y * W + b.x], deep = cr[ty * W + tx] > 2 * TS + 1e-6;      // 1 ccc = one terrain level of flood, times the turret's damage scale
         const take = (px, py, max) => { if (px < 0 || py < 0 || px >= W || py >= H) return; const j = py * W + px; if (ter[j] >= ROCK || ter[j] > lvB) return; cr[j] = Math.max(0, cr[j] - Math.min(cr[j], max)); };
         if (deep) { take(tx, ty, 2 * CCC); for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) if (yy !== 0) take(tx + xx, ty + yy, CCC); }          // deep: 2 ccc on the target and 1 ccc on six neighbours
         else { const sx = Math.sign(bcx - (tx + .5)), sy = Math.sign(bcy - (ty + .5)); for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) if (!(xx === sx && yy === sy)) take(tx + xx, ty + yy, CCC); }   // shallow: 1 ccc on eight squares
@@ -1039,7 +1039,7 @@ function drawEscape() {
 function landShell(sh) {
   const { T, tx, ty } = sh;
   effects.push({ k: 'ring', x: tx + .5, y: ty + .5, r: T.splash + 0.5, t: 0.4, max: 0.4 });
-  const CCC = 2 * TS, tl = ter[ty * W + tx];                  // a shell takes up to 4 ccc from each of 36 squares on the target's level and below
+  const CCC = 2 * TS * (T.dmgScale || 1), tl = ter[ty * W + tx];                  // a shell takes up to 4 ccc from each of 36 squares on the target's level and below
   for (let yy = -2; yy <= 3; yy++) for (let xx = -2; xx <= 3; xx++) {
     const px = tx + xx, py = ty + yy; if (px < 0 || py < 0 || px >= W || py >= H) continue;
     const j = py * W + px; if (ter[j] >= ROCK || ter[j] > tl) continue; cr[j] = Math.max(0, cr[j] - Math.min(cr[j], 4 * CCC));
