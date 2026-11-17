@@ -209,6 +209,7 @@ const terC = document.createElement('canvas'); terC.width = W * CS; terC.height 
 const ROCK = 99, TPS = 30;
 
 // w,h = size in cells. cost = total energy, time = build time (s). ext = extends the network (link = max centre-to-centre distance to connect).
+const HEAL_BASE = 3;                    // the base heals slowly: 3 hp per ball, a ball every second at most (and never while flood lies on it or while it flies)
 const HEAL_COST = 1, HEAL_AMT = 10;   // one green ball repairs 10 hp and costs 1 energy
 const FLOODSMOKE = 'hsla(285,25%,80%,';
 const BURST_SEC = 2, WAVE_AMOUNT = 3;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
@@ -216,17 +217,17 @@ const BALL = 1;   // energy in every ball (building, ammunition and repairs are 
 const FLOOD_IDLE_SEC = 10;   // invisible flood that lies completely still for this long dries up
 const FLOOD_HIDE = 0.012;   // a cell that is already visible stays visible down to this depth, so thin flood at the edge doesn't flicker on and off
 const FLOOD_VIS = 0.02;   // the thinnest flood there is: anything less is not drawn, not shot at, doesn't flow and doesn't hurt. Everything at or above it is all of those.
-const COLLECT_PER_CELL = 0.003;   // energy per second for every cell of green area the Collectors cover (a Collector with a free area of about 120 cells gives about 0.36, one squeezed next to the base about 0.16)
-const BASE_CAP = 12, BASE_INCOME = 0.6, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.08, LEAK = 0.02;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
+const COLLECT_PER_CELL = 0.0012;   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
+const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.08, LEAK = 0.02;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
 const TYPES = {
   command:   { name: 'Energy Base', w: 9, h: 9, cost: 0, link: 8, hp: 900, ext: true },
-  collector: { name: 'Collector',   w: 3, h: 3, key: 1, cost: 12, time: 6,  link: 8, greenR: 7,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
-  relay:     { name: 'Relay',       w: 3, h: 3, key: 2, cost: 25, time: 10, link: 14, hp: 70, ext: true, noGreen: true, info: 'Long range network relay' },
-  blaster:   { name: 'Blaster',     w: 3, h: 3, key: 3, cost: 30, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 9,  cd: 0.45, dmg: 0.5, aoe: [0.5, 0.25], depthW: 8, ammoMax: 40, ammoPer: 5, ammoCost: 1 },
-  mortar:    { name: 'Mortar',      w: 3, h: 3, key: 4, cost: 60, time: 15, hp: 140, range: 18, minRange: 3, cd: 2.0, dmg: 1.2, splash: 3, ammoMax: 20, ammoPer: 2, ammoCost: 1, ammoPerShot: 4, info: 'Heavy splash – hits any level' },
+  collector: { name: 'Collector',   w: 3, h: 3, key: 1, cost: 10, time: 6,  link: 8, greenR: 7,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
+  relay:     { name: 'Relay',       w: 3, h: 3, key: 2, cost: 20, time: 10, link: 14, hp: 70, ext: true, noGreen: true, info: 'Long range network relay' },
+  blaster:   { name: 'Blaster',     w: 3, h: 3, key: 3, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 9,  cd: 0.45, dmg: 0.5, aoe: [0.5, 0.25], depthW: 8, ammoMax: 40, ammoPer: 5, ammoCost: 1 },
+  mortar:    { name: 'Mortar',      w: 3, h: 3, key: 4, cost: 50, time: 15, hp: 140, range: 18, minRange: 3, cd: 2.0, dmg: 1.2, splash: 3, ammoMax: 20, ammoPer: 2, ammoCost: 1, ammoPerShot: 4, info: 'Heavy splash – hits any level' },
   booster:   { name: 'Speed',       w: 3, h: 3, key: 5, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
-  storage:   { name: 'Storage',     w: 3, h: 3, key: 6, cost: 15, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
-  portal:    { name: 'Portal Source', w: 3, h: 3, cost: 30, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 8, info: 'Build it up to escape' }
+  storage:   { name: 'Storage',     w: 3, h: 3, key: 6, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
+  portal:    { name: 'Portal Source', w: 3, h: 3, cost: 20, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 8, info: 'Build it up to escape' }
 };
 // ---------- hand-made terrain for the special maps (levels 0..10 in steps of 2: never a jump of more than one level) ----------
 function fortMaker(cx, cy, keep) {                        // a walled fortress: rings of ground climb to a wall with gates and corner towers; a low courtyard inside (and a raised keep)
@@ -799,6 +800,7 @@ function collectorArea() {                   // number of cells covered by the g
 function maxHp(b) { const T = TYPES[b.type]; return (b.constructing && !T.portal) ? T.hp * (0.01 + 0.99 * b.progress) : T.hp; }   // while it is being built its life is the part that has been built (starts at 1%)
 function boosters() { return buildings.filter(b => b.type === 'booster' && b.online && !b.constructing).length; }
 
+const floodedB = b => tcells(b.type, b.x, b.y).some(([x, y]) => fv[y * W + x]);      // does flood lie on the building?
 function step() {
   const dt = 1 / TPS; tick++; spentTick = 0; deficitTick = 0; for (const b0 of buildings) if (b0.launchT > 0) b0.launchT -= dt;   // per direction: the base never sends two balls into the same first link closer than 0.1 s, but can send in several directions at once
   for (const b of buildings) if (b.busy > 0) { b.busy -= dt; if (b.busy <= 0) { b.busy = 0; dirty = true; } }
@@ -856,7 +858,7 @@ function step() {
     healT -= dt;
     if (healT <= 0) {
       let tg = null, worst = 0.999;
-      for (const b of buildings) { if (!b.online || b.busy > 0 || b.flying) continue; const f = (b.hp + b.healIn) / maxHp(b); if (f < worst) { worst = f; tg = b; } }
+      for (const b of buildings) { if (!b.online || b.busy > 0 || b.flying || (b.type === 'command' && floodedB(b))) continue; const f = (b.hp + b.healIn) / maxHp(b); if (f < worst) { worst = f; tg = b; } }
       if (tg) reqs.push({ kind: 'heal', b: tg, cost: HEAL_COST }); else healT = 0.2;
     }
     reqs.sort((p, q) => (p.b.lastServed || 0) - (q.b.lastServed || 0));   // turn-taking: whoever has waited longest gets the next ball
@@ -868,7 +870,7 @@ function step() {
       let pk;
       if (r.kind === 'build') { b.inflightE += r.cost; b.sendCd = BALL / (T.cost / T.time); pk = { kind: 'build', path, target: b, amt: r.cost, s: 0 }; }   // balls per second follow the build speed
       else if (r.kind === 'ammo') { b.inflight += T.ammoPer; pk = { kind: 'ammo', path, target: b, amt: T.ammoPer, s: 0 }; }
-      else { b.healIn += HEAL_AMT; healT = 1.0; pk = { kind: 'heal', path, target: b, amt: HEAL_AMT, s: 0 }; }
+      else { const amt = b.type === 'command' ? HEAL_BASE : HEAL_AMT; b.healIn += amt; healT = 1.0; pk = { kind: 'heal', path, target: b, amt, s: 0 }; }
       pk.len = packetLen(pk); packets.push(pk);
     }
   }
@@ -880,7 +882,7 @@ function step() {
       if (pk.kind === 'build') {
         t.inflightE = Math.max(0, t.inflightE - pk.amt); t.progress = Math.min(1, t.progress + pk.amt / TYPES[t.type].cost); if (!TYPES[t.type].portal) t.hp = Math.min(TYPES[t.type].hp, t.hp + pk.amt / TYPES[t.type].cost * TYPES[t.type].hp * 0.99);
         if (TYPES[t.type].cost * (1 - t.progress) < 0.06) { t.progress = 1; t.constructing = false; dirty = true; SFX.built(panOf(center(t)[0]), !!TYPES[t.type].portal); }
-      } else if (pk.kind === 'heal') { t.hp = Math.min(maxHp(t), t.hp + pk.amt); t.healIn = Math.max(0, t.healIn - pk.amt); }
+      } else if (pk.kind === 'heal') { if (!(t.type === 'command' && (t.flying || floodedB(t)))) t.hp = Math.min(maxHp(t), t.hp + pk.amt); t.healIn = Math.max(0, t.healIn - pk.amt); }
       else { t.ammo = Math.min(TYPES[t.type].ammoMax, t.ammo + pk.amt); t.inflight -= pk.amt; }
       return false;
     }
@@ -896,7 +898,7 @@ function step() {
     const [bcx, bcy] = center(b);
     const Tb = TYPES[b.type];
     if (fvis && !Tb.portal && !(state === 'escape' && b.type === 'command')) {      // flood hurts every building it reaches – but never a portal source (and not the base while it escapes)
-      b.hp -= (24 + a * 80) * dt;   // any flood on the building hurts, the deeper the faster
+      b.hp -= (24 + a * 80) * (b.type === 'command' ? 2 : 1) * dt;   // any flood on the building hurts, the deeper the faster – the base takes twice as much
       if (b.hp <= 0) {
         if (Tb.portal) { b.hp = Tb.hp; b.progress = 0; b.constructing = true; b.inflightE = 0; dirty = true; continue; }   // a portal source doesn't explode: with its health gone it just switches off and has to be built up again
         lostValue += Tb.cost || 0;
