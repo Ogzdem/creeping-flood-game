@@ -270,7 +270,7 @@ const TYPES = {
   booster:   { name: 'Speed',       w: 2, h: 2, key: 4, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
   reactor:   { name: 'Reactor',     w: 2, h: 2, key: 5, cost: 40, time: 20, hp: 80, yield: 0.3, info: 'Makes energy on its own, needs no green area' },
   blaster:   { name: 'Blaster',     w: 2, h: 2, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 6,  cd: 0.225, dmg: 0.5, dmgScale: 0.71, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
-  mortar:    { name: 'Mortar',      w: 2, h: 2, key: 7, cost: 50, time: 15, hp: 140, range: 9, cd: 1.41, dmg: 2, dmgScale: 0.71, splash: 3, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
+  mortar:    { name: 'Mortar',      w: 2, h: 2, key: 7, cost: 50, time: 15, hp: 140, range: 9, cd: 1.8, dmg: 2, dmgScale: 0.71, splash: 3, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
   portal:    { name: 'Portal gate', w: 2, h: 2, cost: 10, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 5, info: 'Build it up to escape' }
 };
 // ---------- hand-made terrain for the special maps (levels 0..10 in steps of 2: never a jump of more than one level) ----------
@@ -496,7 +496,7 @@ function linkedTo(a, t, x, y) {
   return true;                                            // links work up and down level edges within reach; the green area is just the same-level part, where anything is sure to connect
 }
 // completed, online extenders that a new building of this type at (x,y) could connect to
-function connectors(type, x, y) { return buildings.filter(b => b.online && !b.constructing && !b.flying && !(moving && b === moving.b) && linkedTo(b, type, x, y)); }
+function connectors(type, x, y) { return buildings.filter(b => TYPES[b.type].ext && b.online && !b.constructing && !b.flying && !(moving && b === moving.b) && linkedTo(b, type, x, y)); }   // only extenders carry the energy on: building energy never passes through a turret, Storage or Speed
 
 // Test arena: the base on a high plateau close to the flood, two Blasters in front of it and a Mortar behind it, a flat killing field
 // with a hill to shoot over, and three flood sources on the low ground in the east. Lots of energy, so only the turrets are being tested.
@@ -768,6 +768,7 @@ function recomputeNet() {
     for (const [n, d] of dist) if (!done.has(n) && !n.constructing && d < da) { a = n; da = d; }
     if (!a) break;
     done.add(a); const aExt = TYPES[a.type].ext, [ax, ay] = center(a);
+    if (!aExt) continue;                                 // a turret (or Storage, Speed) is an end point: nothing is built or sent on through it
     for (const b of buildings) {
       if (b === a || b.busy > 0 || !linkedTo(a, b.type, b.x, b.y)) continue;
       if (!done.has(b)) {
@@ -989,7 +990,7 @@ function step() {
       }
       effects.push({ k: 'hole', x: tx + .5, y: ty + .5, r: 0.6, t: 0.5, max: 0.5, a: 0.5 }); puff(tx + .5, ty + .5, 1, 0.5, FLOODSMOKE, 0.4);   // feedback: a little hole and smoke where it hits
     } else {
-      { const dd = 0.8 + Math.hypot(tx + .5 - bcx, ty + .5 - bcy) * 0.06; shells.push({ t: dd, dur: dd, T, tx, ty, x0: bcx, y0: bcy }); }   // the shell is in the air for a while: longer for longer shots
+      { const dd = 1.0 + Math.hypot(tx + .5 - bcx, ty + .5 - bcy) * 0.07; shells.push({ t: dd, dur: dd, T, tx, ty, x0: bcx, y0: bcy }); effects.push({ k: 'ring', x: bcx + Math.cos(b.ang) * 1.1, y: bcy + Math.sin(b.ang) * 1.1, r: 0.9, t: 0.25, max: 0.25 }); puff(bcx + Math.cos(b.ang) * 1.1, bcy + Math.sin(b.ang) * 1.1, 5, 0.8, 'hsla(0,0%,82%,'); }   // a flash and some smoke at the muzzle   // the shell is in the air for a while: longer for longer shots
       SFX.mortarFire(panOf(bcx));
     }
   }
@@ -1003,7 +1004,9 @@ function step() {
   energy = Math.max(0, energy);
   { let fl = 0; for (let i = 0; i < W * H; i++) fl += cr[i];
     if (state === 'play' || state === 'escape') { timeLoss += SCORE.time * dt; score = soft(startPts() - timeLoss - SCORE.flood * fl + SCORE.cleared * Math.max(0, produced - fl) - SCORE.loss * lostValue); } }   // a fast escape, little flood, flood shot away and buildings kept alive all count   // the score falls with time and with the amount of flood on the map – shooting flood away gives some of it back
-  depl += (spentTick / dt - depl) * 0.03; defi += (deficitTick / dt - defi) * 0.03;
+  depl += (spentTick / dt - depl) * 0.03;
+  if (deficitTick > 0) defi += (deficitTick / dt - defi) * 0.03; else defi = energy >= BALL ? 0 : defi * 0.8;   // deficit = what the network asks of the base that the bank could not give: zero at once while the bank can cover every request
+  if (defi < 0.05) defi = 0;
   for (const p of smoke) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy *= 0.97; p.r += dt * 0.9; } smoke = smoke.filter(p => p.t < p.max);
 }
 
@@ -1218,7 +1221,7 @@ function drawBuilding(b, ghost, ok, icon) {
       if (on) { const p = (tick % 45) / 45; ctx.globalAlpha = 1 - p; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, cy3, 3.5 * u + p * 11 * u, 0, 7); ctx.stroke(); }
     } break;
     case 'collector': {                                 // concentric rings with a dot in the middle
-      const r = hs * 0.92, f1 = ghost ? 'rgba(79,209,197,.22)' : on ? '#2f93a3' : '#4a5560', f2 = ghost ? 'rgba(79,209,197,.2)' : on ? '#8fe3e0' : '#6c7683';
+      const r = hs * 0.92 * 0.8, f1 = ghost ? 'rgba(79,209,197,.22)' : on ? '#2f93a3' : '#4a5560', f2 = ghost ? 'rgba(79,209,197,.2)' : on ? '#8fe3e0' : '#6c7683';
       ctx.strokeStyle = ghost ? col : '#05080c'; ctx.lineWidth = 2.5; ctx.fillStyle = f1; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.stroke();
       ctx.fillStyle = f2; ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, 7); ctx.fill(); ctx.fillStyle = on ? '#16204a' : '#2a3140'; ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, 7); ctx.fill();
       if (on) { const p = (tick % 60) / 60; ctx.globalAlpha = (1 - p) * 0.6; ctx.strokeStyle = '#8fe3e0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * 0.62 + p * r * 0.35, 0, 7); ctx.stroke(); }
@@ -1447,11 +1450,15 @@ function draw() {
     ctx.fillStyle = col[1]; ctx.strokeStyle = col[2]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x * CS, y * CS, r, 0, 7); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.beginPath(); ctx.arc(x * CS - r * .3, y * CS - r * .3, r * .32, 0, 7); ctx.fill();
   }
-  for (const sh of shells) {                                // mortar shells in flight: lifted and lowered like a flying building, with a shadow on the ground
-    const p = 1 - sh.t / sh.dur, x = sh.x0 + (sh.tx + .5 - sh.x0) * p, y = sh.y0 + (sh.ty + .5 - sh.y0) * p;
-    let lift = Math.min(1, p * 4, (1 - p) * 4); lift = lift * lift * (3 - 2 * lift);
-    ctx.fillStyle = `rgba(0,0,0,${0.35 - 0.15 * lift})`; ctx.beginPath(); ctx.ellipse(x * CS + 4 * lift, y * CS + 3 * lift, 5, 3.5, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#ffe9a8'; ctx.strokeStyle = '#5a3d00'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x * CS, (y - lift * 2.6) * CS, 5 * (1 + 0.9 * lift), 0, 7); ctx.fill(); ctx.stroke();
+  for (const sh of shells) {                                // mortar shells in flight: a real arc – the shell climbs and falls along its path while its shadow runs straight on the ground
+    const d = Math.hypot(sh.tx + .5 - sh.x0, sh.ty + .5 - sh.y0), Hh = Math.min(5, 1 + d * 0.32);   // the higher arc for the longer shot (in squares)
+    const at = q => { const x = sh.x0 + (sh.tx + .5 - sh.x0) * q, y = sh.y0 + (sh.ty + .5 - sh.y0) * q; return [x * CS, y * CS, 4 * q * (1 - q) * Hh * CS]; };
+    const p = 1 - sh.t / sh.dur, [gx, gy, h] = at(p);
+    ctx.fillStyle = `rgba(0,0,0,${0.38 - 0.18 * Math.min(1, h / (Hh * CS))})`; ctx.beginPath(); ctx.ellipse(gx, gy, 6, 3.5, 0, 0, 7); ctx.fill();   // shadow on the ground
+    ctx.lineCap = 'round';
+    for (let k = 6; k >= 1; k--) { const q = Math.max(0, p - k * 0.025), [x, y, hh] = at(q); ctx.strokeStyle = `rgba(255,200,120,${0.5 * (1 - k / 7)})`; ctx.lineWidth = 6 * (1 - k / 7); ctx.beginPath(); ctx.moveTo(x, y - hh); const [x2, y2, h2] = at(Math.max(0, p - (k - 1) * 0.025)); ctx.lineTo(x2, y2 - h2); ctx.stroke(); }   // glowing trail
+    ctx.fillStyle = '#ffd98a'; ctx.strokeStyle = '#6a3a00'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(gx, gy - h, 5, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(gx - 1, gy - h - 1, 1.8, 0, 7); ctx.fill();
   }
   for (const f of effects) {
     const k = f.t / f.max;
@@ -1485,6 +1492,15 @@ function draw() {
       const [bx, by] = center(b);
       ctx.strokeStyle = !ok ? 'rgba(255,150,150,.8)' : live.includes(b) ? 'rgba(170,255,240,.9)' : 'rgba(255,194,71,.85)'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 5]);
       ctx.beginPath(); ctx.moveTo(gc[0], gc[1]); ctx.lineTo(bx * CS, by * CS); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (T.ext && ok !== false) {                          // an extender can't be reached through a turret: show it in red where the preview is next to one
+      let shown = false;
+      for (const b of buildings) {
+        if ((moving && b === moving.b) || TYPES[b.type].ext || !b.online || !linkedTo(b, gt, ax, ay)) continue;
+        const [bx, by] = center(b); ctx.strokeStyle = 'rgba(255,90,90,.95)'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(gc[0], gc[1]); ctx.lineTo(bx * CS, by * CS); ctx.stroke(); ctx.setLineDash([]);
+        const mx = (gc[0] + bx * CS) / 2, my = (gc[1] + by * CS) / 2; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(mx - 6, my - 6); ctx.lineTo(mx + 6, my + 6); ctx.moveTo(mx + 6, my - 6); ctx.lineTo(mx - 6, my + 6); ctx.stroke(); shown = true;
+      }
+      if (shown) { ctx.fillStyle = 'rgba(255,140,140,.95)'; ctx.font = '600 13px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(linked ? 'No build link through turrets' : 'Not connected: build energy can’t pass through turrets', gc[0], gc[1] - T.h * CS / 2 - 12); }
     }
     if (moving) { const m = moving.b, Tm = TYPES[m.type], [mx, my] = m.flying ? flyPos(m) : [m.x, m.y]; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5; ctx.strokeRect((mx + .5) * CS - 2, (my + .5) * CS - 2, Tm.w * CS + 4, Tm.h * CS + 4); ctx.setLineDash([]); }
     drawBuilding({ type: gt, x: ax, y: ay, ang: 0, hp: 1, online: true }, true, ok);
@@ -1905,12 +1921,12 @@ const MUSIC = (() => {
   }
   function apply(instant) {                                // start, switch or stop the track that is chosen
     if (!setup()) return; if (ac.state === 'suspended') ac.resume();
-    let want = store.get('floodline_music', 1); if (!want) { want = 1; store.set('floodline_music', 1); }   // "off" is the mute button's job
+    let want = store.get('floodline_music_v2', 3); if (!want) { want = 3; store.set('floodline_music_v2', 3); }   // "off" is the mute button's job
     if (want !== cur) { stop(); if (want) { chain(); TRACK[want](); } cur = want; }
     const target = want && !musicMuted ? LEVEL * vols().music : 0;
     bus.gain.cancelScheduledValues(ac.currentTime); bus.gain.setValueAtTime(target, ac.currentTime);   // no fades at all: volume, mute and track changes happen at once
   }
-  function setTrack(n) { store.set('floodline_music', n); apply(); }
+  function setTrack(n) { store.set('floodline_music_v2', n); apply(); }
   return { apply, setTrack };
 })();
 const vols = () => Object.assign({ music: 0.8, sfx: 1 }, store.get('floodline_vol', {}));
@@ -1921,7 +1937,7 @@ const optEl = document.getElementById('opt'); let optWasPaused = false;
 function optOpen() {
   if (optEl.style.display === 'block') { optClose(); return; }
   optWasPaused = paused; paused = true; optEl.style.display = 'block';
-  document.getElementById('optTrack').value = store.get('floodline_music', 1) || 1; optSync();
+  document.getElementById('optTrack').value = store.get('floodline_music_v2', 3) || 3; optSync();
 }
 function optClose() { if (optEl.style.display !== 'block') return; optEl.style.display = 'none'; paused = optWasPaused; }
 document.getElementById('bOptions').onclick = optOpen;
@@ -2096,9 +2112,14 @@ function showHome(view) {
 function wireHomeCommon() {
   const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
   on('hHelp', helpOpen); on('hFb', fbOpen); on('hPriv', showPrivacy); on('hOpt', optOpen); on('hPlay', () => showHome('maps')); on('hBack', () => showHome());
-  on('hRanks', () => {
-    showMsg(`<div class="card"><div class="full"><h2>Rankings</h2></div>${LEVELS.filter(l => !l.test).map(l => `<div><h3>${html(l.name)}</h3>${rankHtml(l.name)}</div>`).join('')}<div class="full"><button id="rClose">Close</button></div></div>`);
-    document.getElementById('rClose').onclick = hideMsg;
+  on('hRanks', () => {                                     // one map at a time: pick the map at the top
+    const maps = LEVELS.filter(l => !l.test).map(l => l.name); let sel = maps.includes(LEVELS[levelIdx].name) ? LEVELS[levelIdx].name : maps[0];
+    const draw = () => {
+      showMsg(`<div class="card" style="grid-template-columns:1fr"><div class="full"><h2>Rankings</h2></div><div class="btns">${maps.map(n => `<button data-m="${html(n)}"${n === sel ? ' class="sel"' : ''}>${html(n)}</button>`).join('')}</div><div><h3>${html(sel)}</h3>${rankHtml(sel)}</div><div class="full"><button id="rClose">Close</button></div></div>`);
+      document.querySelectorAll('#msg .btns button').forEach(bt => bt.onclick = () => { sel = bt.dataset.m; draw(); });
+      document.getElementById('rClose').onclick = hideMsg;
+    };
+    draw();
   });
 }
 function makeSpace() {                                       // a starry sky with nebulae and a planet, drawn once
