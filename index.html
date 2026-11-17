@@ -150,7 +150,9 @@
   #home .tile .lock { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:3.4cqw; height:3.4cqw; filter:drop-shadow(0 2px 5px #000); }
   #home .tile .tick { position:absolute; right:.5cqw; top:.4cqw; font-style:normal; background:#2f7a3d; color:#fff; border-radius:50%; width:2cqw; height:2cqw; line-height:2cqw; text-align:center; font-size:1.4cqw; }
   #home .mnote { margin:2cqw 0 4cqw; font:400 2.1cqw/1.5 'Trebuchet MS',sans-serif; color:#e6ecff; }
-  #home.mview .small { position:static; margin-top:1cqw; text-align:left; }
+  #home.mview .small { position:static; margin:0; text-align:center; } #home .mfoot { display:flex; align-items:center; justify-content:space-between; gap:2cqw; } #home .mfoot .sndb { margin:0 !important; }
+  #home.mview .gbtn, #home.mview .ybtn, #home.mview .bbtn { font:400 1.9cqw/1.2 'Trebuchet MS','Segoe UI',sans-serif; padding:.9cqw 0; width:100%; align-self:auto; }
+  #home.mview .smallbtn { width:auto; }
   #home .sndb { position:absolute; left:5cqw; bottom:5.5cqh; display:flex; gap:.8cqw; } #home .sndb button { padding:.7cqw 1cqw; display:flex; align-items:center; }
   #home.mview .sndb { position:static; margin-top:1.4cqw; justify-content:flex-start; }
   #home.title { container-type:size; display:block; overflow:hidden; padding:0; }
@@ -166,7 +168,9 @@
   #home .bl .gbtn { font-size:1.9cqw; padding:1.1cqh 0; width:62%; }
   #home .small { position:absolute; left:5cqw; bottom:2cqh; font:11px/1.4 'Trebuchet MS',sans-serif; color:#c6cfe0; text-align:left; letter-spacing:.04em; }
   #home .small a { color:#e6ecff; cursor:pointer; margin-left:14px; text-decoration:none; } #home .small a:hover { text-decoration:underline; }
-  #home .tag { position:absolute; right:4cqw; bottom:2.2cqh; width:34cqw; font:italic 1.5cqw/1.4 'Trebuchet MS',sans-serif; color:#aab6d4; text-align:right; }
+  #home .tag { position:absolute; left:50%; transform:translateX(-50%); bottom:2.4cqh; width:46cqw; font:italic 1.5cqw/1.4 'Trebuchet MS',sans-serif; color:#aab6d4; text-align:center; }
+  #home .smallbtn { font-size:1.4cqw !important; padding:.7cqw 1.8cqw !important; width:auto !important; align-self:auto !important; letter-spacing:.04em; }
+  #home .privb { position:absolute; right:3cqw; bottom:2cqh; }
   #home .row2 { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
   #home .hbox { width:min(940px, 94%); margin:auto; padding:20px 0; } #home h2 { margin:0 0 16px; font-size:26px; font-weight:400; letter-spacing:.08em; } #home .hint { color:var(--dim); margin:0 0 14px; font-size:13px; }
   #home .col { display:flex; flex-direction:column; gap:10px; width:250px; margin:0 auto; } #home .col button { padding:10px; font-size:16px; } #home .col button.big { padding:14px; font-size:22px; letter-spacing:.14em; background:#1c4a27; border-color:#2f7a3d; }
@@ -1759,16 +1763,16 @@ const MUSIC = (() => {
   }
   function hit(t, type, f0, f1, dur, vol, wet) {            // a short, pitched thump or note
     const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); wire(g, wet); o.start(t); o.stop(t + dur + 0.05);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); wire(g, wet); o.start(t); o.stop(t + dur + 0.2);
   }
   function burst(t, ftype, f, dur, vol, wet) {              // a short puff of filtered noise (drum body, hi-hat)
     const src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = nbuf; fl.type = ftype; fl.frequency.value = f;
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(fl); fl.connect(g); wire(g, wet); src.start(t); src.stop(t + dur + 0.03);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(fl); fl.connect(g); wire(g, wet); src.start(t); src.stop(t + dur + 0.03);
   }
   function pluck(t, n, dur, vol, cutoff) {                  // a soft plucked note
     const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = hz(n); f.type = 'lowpass';
     f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(300, t + dur);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(f); f.connect(g); wire(g, 0.6); o.start(t); o.stop(t + dur + 0.05);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(f); f.connect(g); wire(g, 0.6); o.start(t); o.stop(t + dur + 0.2);
   }
   function swell(notes, dur, vol, t) {                      // dark, heavy chord that grows and fades
     const f = ac.createBiquadFilter(), env = ac.createGain(); f.type = 'lowpass'; f.frequency.value = 520;
@@ -1797,7 +1801,6 @@ const MUSIC = (() => {
         if (k === 0 || k === 4) hit(t, 'sine', 90, 42, 0.28, 0.14, 0.1);
         if (k === 0 || k === 3 || k === 6) hit(t, 'triangle', hz(bass[bar]), hz(bass[bar]) * 0.98, 0.34, 0.08, 0.2);
         pluck(t, chords[bar][pat[k]] + (k % 4 === 3 ? 12 : 0), 0.4, 0.028, 1800);
-        if (k % 2 === 1) burst(t, 'highpass', 7000, 0.05, 0.01, 0.1);
         if (k === 0 && bar % 2 === 0) pad([chords[bar][0] - 12, chords[bar][1], chords[bar][2]], 9, 0.02, t);
       });
     },
@@ -2021,8 +2024,8 @@ function renderTitle() {
   homeEl.className = 'title'; document.getElementById('quick').style.display = 'none';
   homeEl.innerHTML = `<img class="planet" src="${PLANET}" alt="">
     <div class="ttl">Creeping<br>Flood</div>
-    <div class="menu-r"><button id="hPlay" class="gbtn">Play</button><button id="hOpt" class="gbtn">Options</button><button id="hFb" class="gbtn">Feedback</button><button id="hHelp" class="ybtn">How To Play</button></div>
-    <div class="bl"><button id="hRanks" class="bbtn">Rankings</button><button id="hPriv" class="gbtn">Privacy</button></div>
+    <div class="menu-r"><button id="hPlay" class="gbtn">Play</button><button id="hOpt" class="gbtn">Options</button><button id="hFb" class="gbtn">Feedback</button><button id="hRanks" class="bbtn">Rankings</button><button id="hHelp" class="ybtn">How To Play</button></div>
+    <button id="hPriv" class="gbtn smallbtn privb">Privacy</button>
     <div class="tag">Hold back the flood. Open the portal. Take Ouroboros City home.</div>
     <div class="small">VER: ${VERSION} ${STAGE}</div><div class="sndb"><button id="tSnd" title="Sound effects on/off"></button><button id="tMus" title="Music on/off"></button></div>`;
   wireHomeCommon(); lastIcons = ''; setIcons();
@@ -2039,13 +2042,13 @@ function renderMaps() {
   };
   const idx = LEVELS.map((l, i) => i).filter(i => !LEVELS[i].test || DEV), first = idx[0], restIdx = idx.slice(1);
   homeEl.innerHTML = `<div class="mtop">
-      <div class="ml"><button id="hHelp" class="obtn">How To Play</button><button id="hOpt" class="bluebtn">Options</button><button id="hFb" class="goldbtn">Feedback</button></div>
+      <div class="ml"><button id="hOpt" class="gbtn">Options</button><button id="hFb" class="gbtn">Feedback</button><button id="hHelp" class="ybtn">How To Play</button></div>
       <div class="today"><div class="th">Start here</div>${tile(LEVELS[first], first, html(LEVELS[first].name))}</div>
-      <div class="mr"><button id="hRanks" class="gbtn">Rankings</button><button id="hPriv" class="graybtn">Privacy</button><button id="hBack" class="redbtn">Back</button></div>
+      <div class="mr"><button id="hRanks" class="bbtn">Rankings</button><button id="hBack" class="redbtn">Back</button></div>
     </div>
     <div class="mpanel">${restIdx.map(i => tile(LEVELS[i], i)).join('')}</div>
     <div class="mnote">Clear a map to open the next three.<br>More missions are on the way &ndash; check back soon!</div>
-    <div class="small">VER: ${VERSION} ${STAGE}</div><div class="sndb"><button id="tSnd" title="Sound effects on/off"></button><button id="tMus" title="Music on/off"></button></div>`;
+    <div class="mfoot"><div class="sndb"><button id="tSnd" title="Sound effects on/off"></button><button id="tMus" title="Music on/off"></button></div><div class="small">VER: ${VERSION} ${STAGE}</div><button id="hPriv" class="gbtn smallbtn">Privacy</button></div>`;
   homeEl.querySelectorAll('.tile').forEach(b => b.onclick = () => { const i = +b.dataset.i; if (!isUnlocked(i)) return; homeEl.style.display = 'none'; setHud(true); resetEnd(); loadLevel(i); });
   wireHomeCommon(); lastIcons = ''; setIcons();
 }
