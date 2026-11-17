@@ -1243,19 +1243,20 @@ function drawBuilding(b, ghost, ok, icon) {
       ctx.beginPath(); ctx.moveTo(0, -hs + 3); ctx.lineTo(hs - 3, 0); ctx.lineTo(0, hs - 3); ctx.lineTo(-hs + 3, 0); ctx.closePath();
       ctx.fillStyle = dark; ctx.fill(); ctx.fillStyle = on ? 'rgba(255,60,60,.8)' : 'rgba(120,120,120,.35)'; ctx.fill(); ctx.stroke();
     } break;
-    case 'portal': {                                    // portal source: a natural flower on a stand (not a player building, so no plate); it spins when built up
-      const hh = hs * 1.35, hf = hs * 2.0;
-      ctx.fillStyle = '#dfe6ee'; ctx.strokeStyle = '#10161d'; ctx.lineWidth = 1.5;                       // a short white pillar under the flower
-      ctx.beginPath(); ctx.moveTo(-hh * 0.11, hh * 0.05); ctx.lineTo(hh * 0.11, hh * 0.05); ctx.lineTo(hh * 0.15, hh * 0.72); ctx.lineTo(-hh * 0.15, hh * 0.72); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillRect(-hh * 0.27, hh * 0.68, hh * 0.54, hh * 0.1); ctx.strokeRect(-hh * 0.27, hh * 0.68, hh * 0.54, hh * 0.1);
-      ctx.save(); ctx.translate(0, -hf * 0.08); ctx.rotate(Math.PI / 4 + (on ? tick * 0.045 : 0));   // at rest the four petals point NE, SE, SW and NW
+    case 'portal': {                                    // portal source (Totem): a white ring gate with green blades and a red core (not a player building, so no plate)
+      const R0 = hs * 0.86, cy0 = -hs * 0.1;
+      ctx.fillStyle = '#dfe6ee'; ctx.strokeStyle = '#10161d'; ctx.lineWidth = 1.5;                       // a short white stand under the ring
+      ctx.beginPath(); ctx.moveTo(-hs * 0.13, cy0 + R0 * 0.8); ctx.lineTo(hs * 0.13, cy0 + R0 * 0.8); ctx.lineTo(hs * 0.2, hs * 0.92); ctx.lineTo(-hs * 0.2, hs * 0.92); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillRect(-hs * 0.36, hs * 0.86, hs * 0.72, hs * 0.12); ctx.strokeRect(-hs * 0.36, hs * 0.86, hs * 0.72, hs * 0.12);
+      ctx.save(); ctx.translate(0, cy0);
+      ctx.lineWidth = hs * 0.22; ctx.strokeStyle = '#10161d'; ctx.beginPath(); ctx.arc(0, 0, R0, 0, 7); ctx.stroke();            // the ring: dark outline, white body
+      ctx.lineWidth = hs * 0.15; ctx.strokeStyle = '#dfe6ee'; ctx.beginPath(); ctx.arc(0, 0, R0, 0, 7); ctx.stroke();
+      ctx.rotate(Math.PI / 4 + (on ? tick * 0.045 : 0));                                                  // four green blades turn inside the ring
       for (let i = 0; i < 4; i++) {
-        ctx.save(); ctx.rotate(i * Math.PI / 2);
-        ctx.fillStyle = '#46d65a'; ctx.strokeStyle = '#1c7a30'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, -hf * 0.1); ctx.quadraticCurveTo(hf * 0.3, -hf * 0.34, 0, -hf * 0.64); ctx.quadraticCurveTo(-hf * 0.3, -hf * 0.34, 0, -hf * 0.1); ctx.fill(); ctx.stroke();
-        ctx.restore();
+        ctx.save(); ctx.rotate(i * Math.PI / 2); ctx.fillStyle = '#46d65a'; ctx.strokeStyle = '#1c7a30'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -R0 * 0.2); ctx.quadraticCurveTo(R0 * 0.28, -R0 * 0.45, 0, -R0 * 0.72); ctx.quadraticCurveTo(-R0 * 0.28, -R0 * 0.45, 0, -R0 * 0.2); ctx.fill(); ctx.stroke(); ctx.restore();
       }
-      ctx.fillStyle = '#e0443f'; ctx.strokeStyle = '#ffd0cc'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, hf * 0.2, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e0443f'; ctx.strokeStyle = '#ffd0cc'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R0 * 0.2, 0, 7); ctx.fill(); ctx.stroke();
       ctx.restore();
     } break;
     case 'reactor': {                                   // two crossing orbits (an atom) and an orange diamond
