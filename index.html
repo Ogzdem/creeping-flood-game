@@ -109,6 +109,9 @@
   #opt label { display:flex; flex-direction:column; gap:4px; margin:10px 0; color:var(--dim); } #opt input[type=range] { width:100%; } #opt select { background:#0e1319; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:4px 6px; font:inherit; }
   #opt .fbn { color:var(--dim); font-size:12px; }
   #msg { z-index:36; }
+  #edit { position:absolute; left:10px; top:10px; width:330px; display:none; z-index:45; background:rgba(14,19,25,.94); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:12.5px; }
+  #edit .edr { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0; } #edit .edr button { padding:3px 8px; font-size:12px; } #edit #edMap { color:var(--dim); margin-left:6px; } #edInfo { color:var(--dim); line-height:1.45; }
+  #edit textarea { width:100%; margin-top:6px; background:#0e1319; color:var(--txt); border:1px solid var(--line); border-radius:4px; font:11px/1.3 monospace; }
   #msg table.sc { margin:8px 0 0; font-size:13px; border-collapse:collapse; } #msg table.sc td { padding:1px 14px 1px 0; } #msg table.sc td + td { text-align:right; font-variant-numeric:tabular-nums; }
   #msg .card { background:#10161d; border:1px solid var(--line); border-radius:8px; padding:18px 22px; width:min(760px, 94%); max-height:94%; overflow:auto; text-align:left; font-size:13.5px; display:grid; grid-template-columns:1fr 1fr; gap:14px 26px; }
   #msg .card h2 { margin:0; font-size:26px; font-weight:600; } #msg .card h3 { margin:0 0 6px; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600; }
@@ -151,6 +154,10 @@
     <textarea id="fbText" rows="3" placeholder="Write a point and press Add"></textarea>
     <div class="fbr"><button id="fbAdd">Add point</button><button id="fbSend">Send now</button></div>
     <ul id="fbList"></ul><div id="fbStatus"></div></div>
+  <div id="edit"><b>Editor</b> <span id="edMap"></span>
+    <div class="edr"><button data-t="move" class="sel">Move</button><button data-t="src">+ Flood source</button><button data-t="por">+ Portal</button><button data-t="del">Delete</button></div>
+    <div class="edr"><button id="edSave">Save</button><button id="edSend">Send to Claude</button><button id="edText2">Show as text</button><button id="edReset">Reset</button><button id="edClose">Close</button></div>
+    <div id="edInfo"></div><textarea id="edText" rows="6" readonly style="display:none"></textarea></div>
   <div id="opt"><div class="fbh"><b>Options</b><span></span><button id="optClose" title="Close">&#10005;</button></div>
     <label>Music volume<input type="range" id="optMus" min="0" max="100"></label>
     <label>Sound volume<input type="range" id="optSfx" min="0" max="100"></label>
@@ -183,7 +190,7 @@
     <button id="b1" class="sel">x1</button><button id="b2">x2</button><button id="b4">x4</button>
   </div></div>
   <button id="bMenu" title="Menu">Menu</button>
-  <div id="menu"><button id="bHelp">Help</button><button id="bFeedback">Feedback</button><button id="bOptions">Options</button><span id="levels" style="display:contents"></span><button id="bRestart">Restart</button><button id="bExit">Main menu</button></div>
+  <div id="menu"><button id="bHelp">Help</button><button id="bFeedback">Feedback</button><button id="bOptions">Options</button><button id="bEditor" style="display:none">Editor</button><span id="levels" style="display:contents"></span><button id="bRestart">Restart</button><button id="bExit">Main menu</button></div>
 </div>
 </div>
 
@@ -520,6 +527,13 @@ function loadLevel(i) {
   }
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)   // yttersta rutorna = kartkant (ej byggbar, blockerar floden)
     if (x === 0 || y === 0 || x === W - 1 || y === H - 1) ter[y * W + x] = ROCK;
+  const savedLay = DEV ? store.get('floodline_layouts', {})[L.name] : null, LAY = savedLay || DEFAULT_LAYOUTS[L.name];   // a layout made with the editor beats the generated one
+  if (LAY) {
+    addBuilding('command', LAY.base[0], LAY.base[1]);
+    for (const [x, y] of LAY.sources) emitters.push({ x, y, sup: 0, rate: EMITTER_RATE, ph: R() * 6, start: 0 });
+    for (const [x, y] of LAY.portals) addBuilding('portal', x, y);
+    renderTerrain(); hideMsg(); setPanel(); updateButtons(); return;
+  }
   if (L.place) {                                          // special maps say where the base, the flood sources and the portal sources go; each is moved to the nearest flat ground
     const BT = TYPES.command, P = L.place, sc = p => [Math.round(p[0] * F), Math.round(p[1] * F)];
     const sq = (x, y, lo, hi) => { if (x + lo < 3 || y + lo < 3 || x + hi > W - 4 || y + hi > H - 4) return false; const h0 = ter[(y + lo) * W + x + lo]; if (h0 >= ROCK) return false; for (let dy = lo; dy <= hi; dy++) for (let dx = lo; dx <= hi; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false; return true; };
@@ -616,12 +630,13 @@ function loadLevel(i) {
     const eMin = Math.min(...emitters.map(e => Math.hypot(e.x - bcx, e.y - bcy)));
     const flat4 = (x, y) => { if (x < 3 || y < 3 || x > W - 4 || y > H - 4) return false; const h0 = ter[(y - 2) * W + x - 2]; if (h0 >= ROCK) return false; for (let dy = -2; dy <= 1; dy++) for (let dx = -2; dx <= 1; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false; return true; };   // flat ground under the 3x3 source and its margin
     for (let relax = 0; relax < 6 && pick.length < want; relax++) {   // each round relaxes the spacing a little, so even a very rugged map gets all its portal sources
-      const dMin = [40, 36, 32, 28, 24, 14][relax] * F, spacing = [36, 32, 28, 24, 20, 16][relax] * F, emMin = [16, 14, 12, 12, 12, 12][relax] * F, cosMin = [-0.3, -0.6, -1, -1, -1, -1][relax], dMax = [1.1, 1.25, 1.5, 1.8, 3, 99][relax] * D, cands = [];
+      const dMin = [48, 43, 38, 32, 26, 14][relax] * F, spacing = [38, 34, 30, 25, 20, 16][relax] * F, emMin = [12, 11, 10, 10, 10, 10][relax] * F, cosMin = [-0.3, -0.6, -1, -1, -1, -1][relax], dMax = [1.1, 1.25, 1.5, 1.8, 3, 99][relax] * D, cands = [];
       for (let y = 8; y < H - 8; y++) for (let x = 8; x < W - 8; x++) {
         if (relax < 5 ? !flat5(x, y) : !flat4(x, y)) continue;
         const ux = x - bcx, uy = y - bcy, d = Math.hypot(ux, uy); if (d < dMin || d > dMax) continue;
         if ((ux * vx + uy * vy) / (d * D) < cosMin) continue;
         if (emitters.some(e => Math.hypot(e.x - x, e.y - y) < emMin)) continue;
+        if (relax < 3) { let ne = emitters[0], nd = 1e9; for (const e of emitters) { const dd = Math.hypot(e.x - x, e.y - y); if (dd < nd) { nd = dd; ne = e; } } if (ter[y * W + x] > ter[ne.y * W + ne.x]) continue; }   // preferably where the flood can reach: on the level of the nearest source or lower
         cands.push([x, y]);
       }
       let guard = 0;
@@ -1487,7 +1502,7 @@ document.getElementById('b4').onclick = () => setSpeed(4);
 document.getElementById('bPause').onclick = () => paused = !paused;
 document.getElementById('bSound').onclick = () => { muted = !muted; if (!muted) SFX.unlock(); MUSIC.apply(true); };   // sound comes later
 const menuEl = document.getElementById('menu'), menuBtn = document.getElementById('bMenu');
-menuBtn.onclick = e => { document.getElementById('bRestart').style.display = document.getElementById('bExit').style.display = state === 'home' ? 'none' : ''; menuEl.classList.toggle('open'); e.stopPropagation(); };
+menuBtn.onclick = e => { document.getElementById('bEditor').style.display = DEV && state === 'play' && !LEVELS[levelIdx].test ? '' : 'none'; document.getElementById('bRestart').style.display = document.getElementById('bExit').style.display = state === 'home' ? 'none' : ''; menuEl.classList.toggle('open'); e.stopPropagation(); };
 menuEl.onclick = () => menuEl.classList.remove('open');
 document.addEventListener('click', e => { if (!menuEl.contains(e.target)) menuEl.classList.remove('open'); });
 // ---------- how to play: a few short pages with pictures from the game ----------
@@ -1753,6 +1768,74 @@ document.getElementById('optTrack').onchange = e => { SFX.unlock(); MUSIC.setTra
 addEventListener('keydown', e => { if (e.key === 'Escape') optClose(); });
 addEventListener('pointerdown', () => MUSIC.apply()); addEventListener('keydown', () => MUSIC.apply());
 
+// ---------- level editor (open the game with #dev): move the base, the flood sources and the portal sources, save, and send the layout to Claude ----------
+const DEFAULT_LAYOUTS = {};      // layouts made with the editor that are built into the game: { 'Map name': { base: [x, y], sources: [[x, y]], portals: [[x, y]] } }
+let ed = null;                   // the editor's state while state === 'edit'
+const edEl = document.getElementById('edit'), edInfo = document.getElementById('edInfo'), edText = document.getElementById('edText');
+const edItems = () => [...emitters.map(e => ({ kind: 'source', ref: e })), ...buildings.filter(b => b.type === 'command' || b.type === 'portal').map(b => ({ kind: b.type === 'command' ? 'base' : 'portal', ref: b }))];
+const edCenter = it => it.kind === 'source' ? [it.ref.x + .5, it.ref.y + .5] : center(it.ref);
+function edFlat(it) {                                      // is the ground under it one flat level?
+  let cs = [];
+  if (it.kind === 'source') { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) cs.push([it.ref.x + dx, it.ref.y + dy]); } else cs = tcells(it.ref.type, it.ref.x, it.ref.y);
+  const lv = new Set(cs.map(([x, y]) => (x < 0 || y < 0 || x >= W || y >= H) ? ROCK : ter[y * W + x])); return lv.size === 1 && !lv.has(ROCK);
+}
+function edHit(c) {
+  for (const e of emitters) if (Math.hypot(e.x + .5 - c.fx, e.y + .5 - c.fy) <= 2.5) return { kind: 'source', ref: e };
+  for (const b of buildings) if (b.type === 'command' || b.type === 'portal') { const [cx, cy] = center(b), T = TYPES[b.type]; if (Math.abs(cx - c.fx) <= T.w / 2 + 0.5 && Math.abs(cy - c.fy) <= T.h / 2 + 0.5) return { kind: b.type === 'command' ? 'base' : 'portal', ref: b }; }
+  return null;
+}
+function edMove(it, tx, ty) {                              // put an item with its centre at (tx, ty)
+  if (it.kind === 'source') { it.ref.x = Math.max(3, Math.min(W - 4, Math.floor(tx))); it.ref.y = Math.max(3, Math.min(H - 4, Math.floor(ty))); return; }
+  const b = it.ref, T = TYPES[b.type], [ax, ay] = anchorFor(b.type, tx, ty); removeBuilding(b);
+  b.x = Math.max(1, Math.min(W - 2 - T.w, ax)); b.y = Math.max(1, Math.min(H - 2 - T.h, ay)); placeBuilding(b);
+}
+function edLayout() { const b = buildings.find(x => x.type === 'command'); return { base: [b.x, b.y], sources: emitters.map(e => [e.x, e.y]), portals: buildings.filter(x => x.type === 'portal').map(p => [p.x, p.y]) }; }
+function edObject() {                                      // the layout plus a few numbers that describe its "feel"
+  const lay = edLayout(), L = LEVELS[levelIdx], b = buildings.find(x => x.type === 'command'), bc = center(b), D = (p, q) => Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]));
+  const ps = buildings.filter(x => x.type === 'portal').map(center), lvl = ([x, y]) => ter[Math.floor(y) * W + Math.floor(x)] / 2;
+  return { map: L.name, version: VERSION + ' ' + STAGE, size: [W, H], layout: lay, stats: { baseLevel: lvl(bc), baseToPortals: ps.map(p => D(bc, p)), portalLevels: ps.map(lvl), portalToNearestSource: ps.map(p => Math.min(...emitters.map(e => D(p, [e.x + .5, e.y + .5])))), portalToPortal: ps.length > 1 ? ps.slice(1).map((p, i) => D(ps[i], p)) : [], sourceLevels: emitters.map(e => lvl([e.x + .5, e.y + .5])), baseToNearestSource: Math.min(...emitters.map(e => D(bc, [e.x + .5, e.y + .5]))) } };
+}
+function edStatus(extra) {
+  const bad = edItems().filter(it => !edFlat(it)).length;
+  edInfo.innerHTML = (extra ? extra + '<br>' : '') + `${emitters.length} flood source(s), ${buildings.filter(b => b.type === 'portal').length} portal source(s). ` + (bad ? `<span style="color:#ff8a8a">${bad} not on flat ground (red rings)</span>` : '<span style="color:#8fe39a">all on flat ground</span>') + (ed.changed ? ' · <b>unsaved changes</b>' : '');
+}
+function drawEditorOverlay() {
+  for (const it of edItems()) {
+    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 5.6 : it.kind === 'portal' ? 2.7 : 2.9) * CS;
+    ctx.lineWidth = 3; ctx.strokeStyle = edFlat(it) ? 'rgba(143,227,154,.95)' : 'rgba(255,90,90,.95)'; ctx.setLineDash(ed.drag && ed.drag.ref === it.ref ? [] : [9, 6]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r, 0, 7); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+function enterEditor() {
+  fbClose(); loadLevel(levelIdx); state = 'edit'; setHud(false); ed = { tool: 'move', drag: null, changed: false };
+  edEl.style.display = 'block'; edText.style.display = 'none'; document.getElementById('edMap').textContent = LEVELS[levelIdx].name;
+  document.querySelectorAll('#edit [data-t]').forEach(b => b.classList.toggle('sel', b.dataset.t === 'move')); edStatus('Drag items to move them. Rings: green = flat ground.');
+}
+function leaveEditor() {
+  if (ed.changed && !confirm('Leave without saving the changes?')) return;
+  edEl.style.display = 'none'; ed = null; loadLevel(levelIdx); setHud(true);
+}
+document.getElementById('bEditor').onclick = enterEditor;
+{ const h = edEl.querySelector('b'); let off = null; h.style.cursor = 'move'; h.title = 'Drag to move this panel';   // the panel can be dragged out of the way
+  h.onpointerdown = e => { const r = edEl.getBoundingClientRect(), g = edEl.offsetParent.getBoundingClientRect(); off = [e.clientX - r.left, e.clientY - r.top, g]; h.setPointerCapture(e.pointerId); };
+  h.onpointermove = e => { if (off) { edEl.style.left = (e.clientX - off[0] - off[2].left) + 'px'; edEl.style.top = (e.clientY - off[1] - off[2].top) + 'px'; } };
+  h.onpointerup = () => { off = null; }; }
+document.querySelectorAll('#edit [data-t]').forEach(b => b.onclick = () => { ed.tool = b.dataset.t; document.querySelectorAll('#edit [data-t]').forEach(x => x.classList.toggle('sel', x === b)); });
+document.getElementById('edSave').onclick = () => { const all = store.get('floodline_layouts', {}); all[LEVELS[levelIdx].name] = edLayout(); store.set('floodline_layouts', all); ed.changed = false; edStatus('Saved in this browser: the map now starts like this when you play it here.'); };
+document.getElementById('edSend').onclick = () => { const o = edObject(); submit({ kind: 'feedback', points: [{ type: 'Layout', map: o.map, text: JSON.stringify(o) }], context: fbContext() }); edStatus(thanks() + ' (layout of ' + o.map + ')'); };
+document.getElementById('edText2').onclick = () => { edText.style.display = 'block'; edText.value = JSON.stringify(edObject(), null, 1); edText.select(); };
+document.getElementById('edReset').onclick = () => { const all = store.get('floodline_layouts', {}); delete all[LEVELS[levelIdx].name]; store.set('floodline_layouts', all); ed.changed = false; enterEditor(); edStatus('Back to the built-in layout.'); };
+document.getElementById('edClose').onclick = leaveEditor;
+cv.addEventListener('mousedown', e => {
+  if (state !== 'edit' || e.button !== 0) return; const c = cellAt(e), hit = edHit(c);
+  if (ed.tool === 'move') { if (hit) { const [cx, cy] = edCenter(hit); ed.drag = Object.assign(hit, { off: [c.fx - cx, c.fy - cy] }); } }
+  else if (ed.tool === 'src') { emitters.push({ x: Math.max(3, Math.min(W - 4, c.x)), y: Math.max(3, Math.min(H - 4, c.y)), sup: 0, rate: EMITTER_RATE, ph: Math.random() * 6, start: 0 }); ed.changed = true; edStatus('Flood source added.'); }
+  else if (ed.tool === 'por') { addBuilding('portal', c.x - 2, c.y - 2); ed.changed = true; edStatus('Portal source added.'); }
+  else if (ed.tool === 'del' && hit) { if (hit.kind === 'base') { edStatus('The base can&rsquo;t be deleted.'); return; } if (hit.kind === 'source') emitters.splice(emitters.indexOf(hit.ref), 1); else removeBuilding(hit.ref); ed.changed = true; edStatus('Deleted.'); }
+});
+cv.addEventListener('mousemove', e => { if (state === 'edit' && ed.drag) { const c = cellAt(e); edMove(ed.drag, c.fx - ed.drag.off[0], c.fy - ed.drag.off[1]); ed.changed = true; edStatus(); } });
+addEventListener('mouseup', () => { if (state === 'edit' && ed && ed.drag) { ed.drag = null; edStatus(); } });
+
 // ranking: the ten best scores of each map (kept on this device; also sent when FEEDBACK_URL is set)
 const rankList = n => REMOTE ? (REMOTE[n] || []) : store.get('floodline_rank_' + n, []);
 let lastRankT = 0, rankDone = false;
@@ -1886,7 +1969,7 @@ function frame(now) {
   if (state === 'escape' && esc && !paused) updateEscape(rdt);
   const stepDt = 1 / TPS / speed;
   while (acc >= stepDt) { acc -= stepDt; if (!paused && (state === 'play' || state === 'escape' || state === 'won' || state === 'lost')) step(); }
-  draw(); requestAnimationFrame(frame);
+  draw(); if (state === 'edit') drawEditorOverlay(); requestAnimationFrame(frame);
 }
 loadLevel(0); showHome(); MUSIC.apply(); flushLog(); loadRanks(); requestAnimationFrame(frame);
 </script>
