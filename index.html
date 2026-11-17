@@ -128,6 +128,29 @@
   #home h1 { margin:0; font-size:46px; letter-spacing:.1em; font-weight:300; } #home .ver { margin-top:22px; color:#5d6b7a; font-size:12px; letter-spacing:.08em; } #home p { color:var(--dim); margin:6px 0 22px; }
   #home .maps { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; width:min(820px, 92%); margin:0 auto 18px; }
   #home .maps button { padding:10px 12px; text-align:left; display:flex; flex-direction:column; gap:3px; } #home .maps button span { font-size:12px; color:var(--dim); }
+  #home.mview { container-type:inline-size; display:block; overflow-y:auto; padding:2cqw 3cqw 3cqw; text-align:center; }
+  #home .mtop { display:flex; justify-content:space-between; align-items:flex-start; gap:2cqw; }
+  #home .ml, #home .mr { width:20cqw; display:flex; flex-direction:column; gap:1cqw; }
+  #home .mview button, #home.mview .obtn, #home.mview .bluebtn, #home.mview .goldbtn, #home.mview .graybtn, #home.mview .redbtn, #home.mview .gbtn { font:400 1.9cqw/1.2 'Trebuchet MS','Segoe UI',sans-serif; color:#fff; padding:.9cqw 0; border-radius:.4cqw; text-shadow:0 1px 2px rgba(0,0,0,.6); cursor:pointer; }
+  #home .obtn { background:linear-gradient(#f0805a, #c8512f 50%, #a83e20 52%, #d2603c); border:1px solid #7a2a12; }
+  #home .bluebtn { background:linear-gradient(#6c7cff, #3a49d6 50%, #2a35b4 52%, #4a5be8); border:1px solid #232a8a; }
+  #home .goldbtn { background:linear-gradient(#d9b45a, #aa8328 50%, #8a6a18 52%, #b48f33); border:1px solid #6a500d; }
+  #home .graybtn { background:linear-gradient(#bdbdbd, #858585 50%, #6a6a6a 52%, #8d8d8d); border:1px solid #444; }
+  #home .redbtn { background:linear-gradient(#e0554a, #b02218 50%, #8e1a12 52%, #b8362b); border:1px solid #6a100a; }
+  #home .today { width:30cqw; border:2px solid #3b4aa8; background:rgba(18,22,70,.88); border-radius:1.4cqw; padding:.8cqw 1cqw 1cqw; box-shadow:0 0 1.6cqw rgba(70,90,255,.4); }
+  #home .today .th { font:400 2.6cqw 'Trebuchet MS',sans-serif; color:#fff; margin-bottom:.2cqw; }
+  #home .mpanel { margin:2.4cqw auto 0; width:100%; border:2px solid #2f7a3d; background:rgba(16,66,26,.55); border-radius:2cqw; padding:2cqw 1.6cqw; display:grid; grid-template-columns:repeat(3,1fr); gap:2cqw .8cqw; justify-items:center; }
+  #home .tile { background:none; border:0; color:#fff; display:flex; flex-direction:column; align-items:center; gap:.4cqw; cursor:pointer; padding:0; }
+  #home .tile .tl { font:400 1.55cqw 'Trebuchet MS',sans-serif; } #home .tile .ts { font:400 1.25cqw 'Trebuchet MS',sans-serif; color:#cfd8e2; }
+  #home .tile .timg { position:relative; display:block; width:20cqw; aspect-ratio:1.4; border:2px solid #9a9a9a; box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.65); overflow:hidden; }
+  #home .today .tile .timg { width:25cqw; }
+  #home .tile .bgi { position:absolute; inset:0; background-size:cover; background-position:center; }
+  #home .tile:hover .timg { border-color:#fff; }
+  #home .tile.locked { cursor:not-allowed; } #home .tile.locked .bgi { filter:grayscale(1) brightness(.28); } #home .tile.locked .timg { border:2px dashed #3a4350; } #home .tile.locked .tl, #home .tile.locked .ts { color:#7c8794; }
+  #home .tile .lock { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:3.4cqw; height:3.4cqw; filter:drop-shadow(0 2px 5px #000); }
+  #home .tile .tick { position:absolute; right:.5cqw; top:.4cqw; font-style:normal; background:#2f7a3d; color:#fff; border-radius:50%; width:2cqw; height:2cqw; line-height:2cqw; text-align:center; font-size:1.4cqw; }
+  #home .mnote { margin:2cqw 0 4cqw; font:400 2.1cqw/1.5 'Trebuchet MS',sans-serif; color:#e6ecff; }
+  #home.mview .small { position:static; margin-top:1cqw; text-align:left; }
   #home.title { container-type:size; display:block; overflow:hidden; padding:0; }
   #home .planet { position:absolute; left:23cqw; top:27cqh; width:31cqw; height:auto; filter:drop-shadow(0 0 3cqw rgba(90,140,255,.35)); pointer-events:none; }
   #home .ttl { position:absolute; left:5cqw; top:2cqh; font:300 10.5cqw/0.93 'Trebuchet MS','Segoe UI',sans-serif; text-align:left; background:linear-gradient(#7d9bff 0%, #4468f0 60%, #3552d8 100%); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 1.2cqw rgba(70,110,255,.55)); }
@@ -287,11 +310,19 @@ function makeArchipelago(ter) {                           // islands in a sea: t
     ter[y * W + x] = v;
   }
 }
+function makeDivide(ter, seed) {                           // a deep trench splits the map: the base on one high plateau, the totems on the other, the flood sources between
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const X = x / F, Y = y / F, u = X + 3 * (vnoise(Y / 9, 3.3, seed) - 0.5) * 2;
+    let v = u < 28 ? 6 : u < 34 ? 4 : u < 40 ? 2 : u < 66 ? 0 : u < 72 ? 2 : u < 78 ? 4 : 6;
+    for (const [cx, cy, rx, ry] of [[53, 24, 6, 5], [53, 56, 6, 5]]) if (Math.pow((X - cx) / rx, 2) + Math.pow((Y - cy) / ry, 2) <= 1) v = Math.max(v, 2);   // two low mesas in the trench
+    ter[y * W + x] = v;
+  }
+}
 const LEVELS = [
-  // twelve maps, easiest and most ordinary first (three more open up for every map cleared)
+  // thirteen maps: Basin first, then three more open up for every map cleared (easiest and most ordinary first)
+  { name: 'Basin', seed: 404, base: 'middle', start: { mode: 'at', at: 'middle' }, palette: 'gray', gen: { s1: 30, s2: 14, mix: 0.85, off: 0.35, gain: 7, maxLevel: 4, minArea: 260, big: 2, step: 4 } },
   { name: 'Badlands', seed: 505, base: 'corner', spread: true, palette: 'mars', gen: { s1: 15, s2: 7, mix: 0.6, off: 0.18, gain: 10, maxLevel: 5, minArea: 220, big: 2, step: 4 } },
   { name: 'Terraces', seed: 202, base: 'middle', start: { mode: 'at', at: 'corner-br' }, palette: 'gray', gen: { s1: 17, s2: 8,  mix: 0.7, off: 0.22, gain: 9, maxLevel: 5, minArea: 200, big: 2, step: 4 } },
-  { name: 'Basin', seed: 404, base: 'middle', start: { mode: 'at', at: 'middle' }, palette: 'gray', gen: { s1: 30, s2: 14, mix: 0.85, off: 0.35, gain: 7, maxLevel: 4, minArea: 260, big: 2, step: 4 } },
   { name: 'Fortress', seed: 11, palette: 'gray', special: true, make: fortMaker(66, 40, true),      // break in: flood pours out of the fortress, the portal sources are in its towers and keep
     place: { base: [14, 40], sources: [[52, 31], [80, 31], [66, 52]], portals: [[92, 18], [92, 62], [66, 40]] } },
   { name: 'Plateaus', seed: 606, base: 'corner', start: { mode: 'high' }, palette: 'brown', gen: { s1: 34, s2: 16, mix: 0.85, off: 0.40, gain: 5, maxLevel: 2, minArea: 300, big: 1, step: 3 } },
@@ -306,6 +337,8 @@ const LEVELS = [
     place: { base: [46, 40], sources: [[104, 8], [8, 72], [104, 72]], portals: [[10, 40], [56, 6], [103, 40]] } },
   { name: 'Smiley', seed: 12, palette: 'gray', special: true, make: makeSmiley,
     place: { base: [24, 62], sources: [[38, 31], [74, 31], [56, 43]], portals: [[92, 50], [56, 12], [70, 69]] } },
+  { name: 'Divide', seed: 16, palette: 'brown', special: true, make: makeDivide,
+    place: { base: [14, 40], sources: [[53, 10], [53, 40], [53, 70]], portals: [[96, 16], [96, 64], [88, 40]] } },
   { name: 'Turret test', seed: 1, test: true, startEnergy: 300, capBonus: 280, incomeBonus: 8 }   // for balancing flood against Blasters and Mortars (not one of the maps)
 ];
 const DX = [1, -1, 0, 0], DY = [0, 0, 1, -1], ARW = ['→', '←', '↓', '↑'];
@@ -1931,7 +1964,7 @@ function resetEnd() { endRating = 0; endSent = false; endDraft = ''; rankDone = 
 // the start page: a title screen with Play, then the map list (three maps at first, three more for every map cleared)
 const homeEl = document.getElementById('home');
 const cleared = () => store.get('floodline_cleared', []);
-const unlockedCount = () => DEV ? 99 : 3 + 3 * cleared().length;
+const unlockedCount = () => DEV ? 99 : 1 + 3 * cleared().length;      // only the first map at the start, three more for every map cleared
 const isUnlocked = i => LEVELS[i].test ? DEV : i < unlockedCount();
 const PREV = {}; let prevNext = 0;
 function pumpPreviews() {                                  // a little picture of every map, made one map at a time while the start page is showing
@@ -1951,7 +1984,7 @@ function pumpPreviews() {                                  // a little picture o
 }
 function setHud(on) { for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; document.getElementById('quick').style.display = on ? 'none' : 'flex'; }   // on the start page the two sound switches sit in the corner instead   // the build bar and Menu belong to the map, not the start page
 function showHome(view) {
-  setHud(false); fbClose(); hideMsg(); state = 'home'; tool = null; sel = null; moving = null; homeEl.style.display = 'flex';
+  setHud(false); fbClose(); hideMsg(); state = 'home'; tool = null; sel = null; moving = null; homeEl.style.display = 'block';
   if (view === 'maps') renderMaps(); else renderTitle();
   pumpPreviews();
 }
@@ -1995,17 +2028,24 @@ function renderTitle() {
 const LOCK = '<svg class="lock" viewBox="0 0 24 24" width="44" height="44"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="#e8eef5" stroke-width="2.2" stroke-linecap="round"/><rect x="4.5" y="10" width="15" height="11" rx="2.2" fill="#e8eef5"/><circle cx="12" cy="15.2" r="1.7" fill="#10161d"/><rect x="11.2" y="15.5" width="1.6" height="3.2" rx=".8" fill="#10161d"/></svg>';
 function renderMaps() {
   if (!PLANET) PLANET = makeSpace();
-  homeEl.className = ''; document.getElementById('quick').style.display = 'flex';
+  homeEl.className = 'mview'; document.getElementById('quick').style.display = 'none';
   const done = cleared(), bests = store.get('floodline_best', {});
-  const cards = LEVELS.map((l, i) => {
-    if (l.test && !DEV) return '';
+  const tile = (l, i, label) => {
     const open = isUnlocked(i), img = PREV[l.name] ? `url(${PREV[l.name]})` : 'none', ok = done.includes(l.name);
-    const status = !open ? 'Locked' : ok ? 'Cleared · Best ' + (bests[l.name] || '–') : l.test ? 'For balancing' : '';
-    return `<button class="card${open ? '' : ' locked'}${ok ? ' done' : ''}" data-i="${i}"><i class="bg" style="background-image:linear-gradient(rgba(8,10,14,.1), rgba(8,10,14,.85)), ${img}"></i>${open ? '' : LOCK}${ok ? '<em class="tick">&#10003;</em>' : ''}<b>${l.test ? 'Turret test' : html(l.name)}</b><span>${status}</span></button>`;
-  }).join('');
-  homeEl.innerHTML = `<div class="hbox"><h2>Choose a map</h2><div class="maps">${cards}</div><div class="hint">Clear a map to unlock the next three.</div><div class="row2"><button id="hBack">Back</button></div></div>`;
-  homeEl.querySelectorAll('.maps button').forEach(b => b.onclick = () => { const i = +b.dataset.i; if (!isUnlocked(i)) return; homeEl.style.display = 'none'; setHud(true); resetEnd(); loadLevel(i); });
-  wireHomeCommon();
+    const status = !open ? 'Locked' : ok ? 'Cleared · Best ' + (bests[l.name] || '–') : l.test ? 'For balancing' : '&nbsp;';
+    return `<button class="tile${open ? '' : ' locked'}${ok ? ' done' : ''}" data-i="${i}"><span class="tl">${label || html(l.test ? 'Turret test' : l.name)}</span><span class="timg"><i class="bgi" style="background-image:${img}"></i>${open ? '' : LOCK}${ok ? '<em class="tick">&#10003;</em>' : ''}</span><span class="ts">${status}</span></button>`;
+  };
+  const idx = LEVELS.map((l, i) => i).filter(i => !LEVELS[i].test || DEV), first = idx[0], restIdx = idx.slice(1);
+  homeEl.innerHTML = `<div class="mtop">
+      <div class="ml"><button id="hHelp" class="obtn">How To Play</button><button id="hOpt" class="bluebtn">Options</button><button id="hFb" class="goldbtn">Feedback</button></div>
+      <div class="today"><div class="th">Start here</div>${tile(LEVELS[first], first, html(LEVELS[first].name))}</div>
+      <div class="mr"><button id="hRanks" class="gbtn">Rankings</button><button id="hPriv" class="graybtn">Privacy</button><button id="hBack" class="redbtn">Back</button></div>
+    </div>
+    <div class="mpanel">${restIdx.map(i => tile(LEVELS[i], i)).join('')}</div>
+    <div class="mnote">Clear a map to open the next three.<br>More missions are on the way &ndash; check back soon!</div>
+    <div class="small">VER: ${VERSION} ${STAGE}<a id="tSnd"></a><a id="tMus"></a></div>`;
+  homeEl.querySelectorAll('.tile').forEach(b => b.onclick = () => { const i = +b.dataset.i; if (!isUnlocked(i)) return; homeEl.style.display = 'none'; setHud(true); resetEnd(); loadLevel(i); });
+  wireHomeCommon(); lastIcons = ''; setIcons();
 }
 document.getElementById('bExit').onclick = showHome;
 
