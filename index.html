@@ -218,7 +218,7 @@ const TYPES = {
   command:   { name: 'Energy Base', w: 9, h: 9, cost: 0, link: 8, hp: 900, ext: true },
   collector: { name: 'Collector',   w: 3, h: 3, key: 1, cost: 10, time: 6,  link: 8, greenR: 7,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
   relay:     { name: 'Relay',       w: 3, h: 3, key: 2, cost: 20, time: 10, link: 14, hp: 70, ext: true, noGreen: true, info: 'Long range network relay' },
-  blaster:   { name: 'Blaster',     w: 3, h: 3, key: 3, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 9,  cd: 0.6, dmg: 0.5, aoe: [0.5, 0.25], depthW: 8, ammoMax: 40, ammoPer: 2, ammoCost: 1 },
+  blaster:   { name: 'Blaster',     w: 3, h: 3, key: 3, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 9,  cd: 0.6, dmg: 0.5, aoe: [0.5, 0.25], depthW: 8, ammoMax: 40, ammoPer: 3, ammoCost: 1 },
   mortar:    { name: 'Mortar',      w: 3, h: 3, key: 4, cost: 50, time: 15, hp: 140, range: 18, minRange: 3, cd: 2.0, dmg: 1.2, splash: 3, ammoMax: 20, ammoPer: 2, ammoCost: 1, ammoPerShot: 4, info: 'Heavy splash – hits any level' },
   booster:   { name: 'Speed',       w: 3, h: 3, key: 5, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
   storage:   { name: 'Storage',     w: 3, h: 3, key: 6, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
