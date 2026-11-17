@@ -18,7 +18,7 @@
   button.eco:hover, button.wpn:hover { filter:brightness(1.25); }
   button.sel { border-color:#fff; box-shadow:0 0 0 1px #fff inset; filter:brightness(1.35); }
   .sp { flex:1; }
-  #wrap { position:relative; width:100%; }
+  #wrap { position:relative; width:100%; overflow:hidden; }
   canvas#c { width:100%; display:block; background:#000; cursor:crosshair; }
   #msg { position:absolute; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; background:rgba(8,10,14,.78); font-size:28px; text-align:center; }
   #msg small { font-size:15px; color:var(--dim); }
@@ -2136,8 +2136,8 @@ const RIM = 30 / 1600;
 function fitGame() {                                       // the game fills the browser window: as wide as the width allows, but never so tall that the bars under the map are pushed off the screen
   const g = document.getElementById('game'), h = document.getElementById('hud'), pn = document.getElementById('panel');
   for (let k = 0; k < 3; k++) {
-    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 20) * 1.4 / (1 - RIM))));      // the map has a dark rim of rock along its lower edge (RIM of its height): the description box is pulled up over it so the visible gap is the same 6 px as below the box
-    g.style.width = w + 'px'; h.style.width = (w - 16) + 'px'; pn.style.marginTop = (6 - RIM * w / 1.4) + 'px';
+    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 20) * 1.4 / (1 - RIM))));      // the bottom row of the map is solid rock that nothing can be built on: it is cropped away (RIM of the height), so the gap above the description box is the same 6 px as below it
+    g.style.width = w + 'px'; h.style.width = (w - 16) + 'px'; document.getElementById('wrap').style.height = Math.round(w / 1.4 * (1 - RIM)) + 'px'; pn.style.marginTop = '6px';
   }
 }
 addEventListener('resize', fitGame);
