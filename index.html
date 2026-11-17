@@ -365,7 +365,7 @@ let fv, ter, cr, nx, lastCr, idleT, bmap, buildings, emitters, effects, links, p
 let uid = 0, cap = BASE_CAP, alphaMul = 1, smoke = [], shells = [], capBonus = 0, incBonus = 0, rateMul = 1, esc = null, healT = 0, launchCd = 0, depl = 0, spentTick = 0, defi = 0, deficitTick = 0, covKey = '', score = 6000, timeLoss = 0, produced = 0, lostValue = 0, lastParts = null;
 const startPts = () => SCORE.perSource * emitters.length;   // a map with more flood sources starts with more points
 const soft = r => r > 600 ? r : 600 * Math.exp((r - 600) / 600);   // below 600 points the score fades towards zero instead of hitting it: it can never go negative or exactly zero
-const SCORE = { perSource: 2000, time: 2, flood: 2, cleared: 1.6, loss: 8, bank: 4 };   // points: start per flood source, lost per second, lost per unit of flood on the map, won per unit of flood destroyed, lost per energy of a destroyed building, won per energy left at the end
+const SCORE = { perSource: 2000, time: 2, flood: 0.4, cleared: 0.32, loss: 8, bank: 4 };   // points: start per flood source, lost per second, lost per unit of flood on the map, won per unit of flood destroyed, lost per energy of a destroyed building, won per energy left at the end
 // ---------- sound effects: all synthesised with WebAudio ----------
 const panOf = x => Math.max(-0.7, Math.min(0.7, (x / W * 2 - 1) * 0.7));
 const SFX = (() => {
@@ -1007,6 +1007,7 @@ function step() {
   for (const p of smoke) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy *= 0.97; p.r += dt * 0.9; } smoke = smoke.filter(p => p.t < p.max);
 }
 
+const TELE = 1.1;                                          // seconds the teleport takes
 function startEscape() {
   state = 'escape'; tool = null; moving = null; sel = null; setPanel();
   const base = buildings.find(b => b.type === 'command'), bc = center(base), ps = buildings.filter(b => b.type === 'portal').map(center);
@@ -1014,26 +1015,43 @@ function startEscape() {
   if (GATE) { gx = GATE[0]; gy = GATE[1]; }                                                                        // ... unless the map says where
   const px = Math.max(5, Math.min(W - 5, gx)), py = Math.max(5, Math.min(H - 5, gy)), dist = Math.hypot(px - bc[0], py - bc[1]);
   const fl = Math.max(1.2, Math.min(5, dist / 11));                                  // flight time in seconds: further away takes longer
-  esc = { t: 0, fl, dur: 1.5 + fl + 0.2, base, bx: bc[0], by: bc[1], px, py, entered: false };
+  esc = { t: 0, fl, dur: 1.5 + fl + TELE + 0.4, base, bx: bc[0], by: bc[1], px, py, entered: false, trail: [] };
   SFX.portalOpen();
 }
 function updateEscape(dt) {
   esc.t += dt;
-  if (esc.t >= 1.5 && !esc.entered) { esc.entered = true; SFX.portalEnter(); }
+  const fT = esc.t - 1.5;
+  if (fT >= 0 && fT <= esc.fl) { const p = Math.min(1, fT / esc.fl), k = p * p * (3 - 2 * p); esc.trail.push({ x: esc.bx + (esc.px - esc.bx) * k, y: esc.by + (esc.py - esc.by) * k, t: 0 }); }
+  for (const q of esc.trail) q.t += dt; esc.trail = esc.trail.filter(q => q.t < 0.8);
+  if (fT >= esc.fl && !esc.entered) { esc.entered = true; SFX.portalEnter(); }              // the teleport starts when the base reaches the portal
   if (esc.t >= esc.dur && state === 'escape') win();
 }
 function drawEscape() {
-  const e = esc, t = e.t, open = Math.min(1, t / 1.5), R = 3.5 * open * CS, px = e.px * CS, py = e.py * CS;
+  const e = esc, t = e.t, T = TYPES.command, fT = t - 1.5, open = Math.min(1, t / 1.5), close = t > e.dur - 0.4 ? Math.max(0, (e.dur - t) / 0.4) : 1;
+  const px = e.px * CS, py = e.py * CS, R = 3.5 * open * close * CS;
   const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, R));
   g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.35, 'rgba(120,230,255,.85)'); g.addColorStop(.75, 'rgba(60,110,255,.55)'); g.addColorStop(1, 'rgba(60,110,255,0)');
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, R, 0, 7); ctx.fill();
   ctx.lineWidth = 3;
   for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(200,245,255,${0.8 - i * 0.2})`; ctx.beginPath(); ctx.arc(px, py, R * (0.45 + i * 0.2), t * (2 + i) + i, t * (2 + i) + i + 4.2); ctx.stroke(); }
-  if (t >= 1.5 && t < e.dur - 0.2) {                              // the base flies in, spinning and shrinking
-    const p = Math.min(1, (t - 1.5) / e.fl), k = p * p * (3 - 2 * p), T = TYPES.command;
-    const cx = e.bx + (e.px - e.bx) * k, cy = e.by + (e.py - e.by) * k, sc = 1 - 0.92 * k;
-    const fb = Object.assign({}, e.base, { x: cx - .5 - T.w / 2, y: cy - .5 - T.h / 2, online: true, busy: 0 });
-    ctx.save(); ctx.translate(cx * CS, cy * CS); ctx.scale(sc, sc); ctx.rotate(k * 6); ctx.globalAlpha = 1 - 0.6 * k; ctx.translate(-cx * CS, -cy * CS); drawBuilding(fb, false); ctx.restore();
+  for (const q of e.trail) { const a = 1 - q.t / 0.8; ctx.fillStyle = `rgba(120,220,255,${a * 0.35})`; ctx.beginPath(); ctx.arc(q.x * CS, q.y * CS - 14, 5 + 13 * a, 0, 7); ctx.fill(); }   // a glowing trail behind the flying base
+  if (t < 1.5 || fT > e.fl + TELE) return;
+  const p = Math.min(1, fT / e.fl), k = p * p * (3 - 2 * p), u = Math.max(0, (fT - e.fl) / TELE);
+  const cx = (e.bx + (e.px - e.bx) * k) * CS, cy = (e.by + (e.py - e.by) * k) * CS, lift = Math.min(1, fT / 0.6), bob = Math.sin(t * 5) * 3 * (1 - u);
+  const w = Math.pow(Math.max(0, (u - 0.35) / 0.65), 1.6);          // 0 until the warp starts, then 1
+  if (u < 0.6) drawShadowOf(e.base, cx + 3 + 14 * lift, cy + 4 + 20 * lift, 1, (0.4 - 0.14 * lift) * (1 - u / 0.6));   // the shadow on the ground
+  // the base in the air: full size (it only lifts a little), then it is stretched into a beam of light and gone
+  ctx.save(); ctx.translate(cx, cy - 18 * lift + bob); ctx.scale((1 + 0.18 * lift) * (1 - 0.88 * w), (1 + 0.18 * lift) * (1 + 6 * w)); ctx.globalAlpha = 1 - 0.9 * w; ctx.translate(-cx, -cy);
+  drawBuilding(Object.assign({}, e.base, { x: cx / CS - .5 - T.w / 2, y: cy / CS - .5 - T.h / 2, online: true, busy: 0 }), false);
+  ctx.restore();
+  if (u > 0.1) drawShadowOf(e.base, cx, cy - 18 * lift + bob, (1 + 0.18 * lift) * (1 - 0.88 * w) * 1, Math.min(1, (u - 0.1) * 2.2) * (1 - w), '#fff', (1 + 0.18 * lift) * (1 + 6 * w));   // it glows white just before it goes
+  if (u > 0.3) {                                             // a column of light, rings along the ground, streaks, sparks and a flash
+    const bw = (1 - w) * CS * 2.6 + 3, bh = CS * 26 * Math.min(1, (u - 0.3) / 0.35), gr = ctx.createLinearGradient(0, cy - bh, 0, cy);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(190,245,255,.95)'); ctx.save(); ctx.globalAlpha = 1 - 0.85 * w; ctx.fillStyle = gr; ctx.fillRect(cx - bw / 2, cy - bh, bw, bh); ctx.restore();
+    for (let i = 0; i < 3; i++) { const f = ((u - 0.3) * 1.5 + i * 0.28) % 1, r = f * 8 * CS; ctx.strokeStyle = `rgba(160,235,255,${(1 - f) * 0.9})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.38, 0, 0, 7); ctx.stroke(); }
+    ctx.lineCap = 'round'; for (let i = 0; i < 18; i++) { const a = i * 0.3491 + 0.2, l0 = (0.6 + (i % 3) * 0.5) * CS, l1 = l0 + (u - 0.3) * (6 + (i % 4)) * CS; ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - u)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * l0, cy + Math.sin(a) * l0 * 0.8); ctx.lineTo(cx + Math.cos(a) * l1, cy + Math.sin(a) * l1 * 0.8); ctx.stroke(); }
+    for (let i = 0; i < 26; i++) { const a = i * 2.399, sp = 3 + (i % 5) * 1.2, d = (u - 0.3) * sp * CS; ctx.fillStyle = `rgba(200,250,255,${Math.max(0, 1 - u) * 0.9})`; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * d, cy - 18 * lift + Math.sin(a) * d * 0.7 - (u - 0.3) * 3 * CS, 2.5, 0, 7); ctx.fill(); }
+    const fl = Math.max(0, Math.sin(Math.PI * Math.min(1, Math.max(0, (u - 0.3) / 0.4)))) * 0.5; if (fl > 0.01) { ctx.fillStyle = `rgba(255,255,255,${fl})`; ctx.fillRect(0, 0, cv.width, cv.height); }
   }
 }
 function landShell(sh) {
@@ -1129,6 +1147,15 @@ function drawCity(col, on) {                              // 128 x 128 box: a he
   ctx.strokeStyle = on ? '#4fd1c5' : col; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 19, 0, 7); ctx.stroke();
   ctx.lineWidth = 2; ctx.strokeStyle = on ? '#e0603a' : col; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 7); ctx.stroke();
   ctx.fillStyle = on ? '#ff4a3a' : '#6c7683'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill();
+  if (!on) return;
+  const tk = tick * 0.035;                                  // energy flows out along the three arms (a few bright dots), the frame turns slowly and the core breathes
+  for (const [i, c] of [[0, '#c8ffc8'], [2, '#ffd0d0'], [4, '#fff0b0']]) {
+    const x = Math.cos(ang(i)) * R, y = Math.sin(ang(i)) * R;
+    for (let k = 0; k < 3; k++) { const f = (tk + i * 0.17 + k / 3) % 1; ctx.globalAlpha = Math.sin(f * Math.PI); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x * (0.22 + 0.55 * f), y * (0.22 + 0.55 * f), 3.2, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(160,235,255,.75)'; ctx.lineWidth = 2; ctx.setLineDash([7, 9]); ctx.lineDashOffset = -tick * 0.7;
+  ctx.beginPath(); for (let i = 0; i < 6; i++) ctx.lineTo(Math.cos(ang(i) + Math.PI / 6) * 43, Math.sin(ang(i) + Math.PI / 6) * 43); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+  const pulse = (tick % 50) / 50; ctx.globalAlpha = (1 - pulse) * 0.7; ctx.strokeStyle = '#ff7a5a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 6 + pulse * 16, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
 }
 function drawShip(col, on) {
   // Energibas: skördarskepp sett ovanifrån, ritat i pixlar (128x128), centrerat på 0,0
@@ -1161,19 +1188,19 @@ function drawShip(col, on) {
   ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 6.283); ctx.fill();
 }
 const shCan = document.createElement('canvas');
-function drawShadowOf(b, cx, cy, sc, alpha) {                // a black silhouette of the building itself, centred at pixel (cx, cy)
+function drawShadowOf(b, cx, cy, sc, alpha, color, scY) {        // a silhouette (black by default) of the building itself, centred at pixel (cx, cy)
   const T = TYPES[b.type], sz = Math.ceil(T.w * CS * 2.2);
   if (shCan.width < sz) { shCan.width = shCan.height = sz; }
   const g = shCan.getContext('2d'), old = ctx, ax = sz / 2 / CS - .5 - T.w / 2;
   g.clearRect(0, 0, shCan.width, shCan.height); ctx = g;
   drawBuilding(Object.assign({}, b, { x: ax, y: ax, online: true, busy: 0, off: false, constructing: false }), false, true, true);
-  ctx = old; g.save(); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, shCan.width, shCan.height); g.restore();
-  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.drawImage(shCan, -sz / 2, -sz / 2, sz, sz, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+  ctx = old; g.save(); g.globalCompositeOperation = 'source-in'; g.fillStyle = color || '#000'; g.fillRect(0, 0, shCan.width, shCan.height); g.restore();
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy); ctx.scale(sc, scY || sc); ctx.drawImage(shCan, -sz / 2, -sz / 2, sz, sz, -sz / 2, -sz / 2, sz, sz); ctx.restore();
 }
 function drawBuilding(b, ghost, ok, icon) {
   const T = TYPES[b.type], [cx, cy] = center(b), px = cx * CS, py = cy * CS, on = icon || (b.online && !(b.busy > 0) && !b.constructing);
   const A = (ghost ? 0.5 : 1) * alphaMul;   // a building under construction is drawn solid (and standing still: animations only run when it is online)
-  ctx.save(); ctx.translate(px, py); ctx.globalAlpha = A; ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 3; ctx.shadowOffsetX = T.w * CS * 0.07; ctx.shadowOffsetY = T.w * CS * 0.1;   // a short shadow to the lower right, like the terrain's
+  ctx.save(); ctx.translate(px, py); ctx.globalAlpha = A;   // placed buildings cast no shadow (only a flying one does)
   const col = ghost ? (ok === true ? '#4fd1c5' : ok === 'warn' ? '#ffc247' : '#e05252') : (on ? '#cfe9f2' : '#6c7683');
   ctx.fillStyle = '#10161d'; ctx.strokeStyle = col; ctx.lineWidth = 2;
   const hs = T.w * CS / 2 - 1.5, u = hs / 14;
