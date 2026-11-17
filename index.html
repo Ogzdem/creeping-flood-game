@@ -193,7 +193,7 @@
 <body>
 <div id="game">
 <div id="wrap">
-  <canvas id="c" width="2200" height="1575"></canvas>
+  <canvas id="c" width="2240" height="1600"></canvas>
   <div id="fb"><div class="fbh"><b>Feedback</b><span id="fbMap"></span><button id="fbClose" title="Close">&#10005;</button></div>
     <div class="fbn">The game is paused while this window is open. Add points (something to improve on the map, a bug, an idea). They collect here and are sent when you finish the map, or press Send. Please don&rsquo;t write personal information.</div>
     <select id="fbType"></select>
@@ -244,7 +244,7 @@
 
 <script>
 'use strict';
-const W = 88, H = 63, CS = 25, F = W / 112;   // F = how much bigger the map is than the first design (112 x 80); distances and terrain sizes scale with it
+const W = 140, H = 100, CS = 16, F = W / 112;   // S = 1.6: the original's squares are 1.6 times bigger than ours, so every length of the original is multiplied by it   // F = how much bigger the map is than the first design (112 x 80); distances and terrain sizes scale with it
 const cv = document.getElementById('c'); let ctx = cv.getContext('2d');
 const lo = document.createElement('canvas'); lo.width = W; lo.height = H;
 const lctx = lo.getContext('2d'); const img = lctx.createImageData(W, H);
@@ -255,23 +255,23 @@ const ROCK = 99, TPS = 30;
 const HEAL_BASE = 3;                    // the base heals slowly: 3 hp per ball, a ball every second at most (and never while flood lies on it or while it flies)
 const HEAL_COST = 1, HEAL_AMT = 10;   // one green ball repairs 10 hp and costs 1 energy
 const FLOODSMOKE = 'hsla(285,25%,80%,';
-const BURST_SEC = 2, WAVE_AMOUNT = 6;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
+const BURST_SEC = 2, WAVE_AMOUNT = 36;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
 const BALL = 1;   // energy in every ball (building, ammunition and repairs are all 1 energy per ball)
 const FLOOD_IDLE_SEC = 10;   // invisible flood that lies completely still for this long dries up
 const FLOOD_HIDE = 0.012;   // a cell that is already visible stays visible down to this depth, so thin flood at the edge doesn't flicker on and off
 const FLOOD_VIS = 0.02;   // the thinnest flood there is: anything less is not drawn, not shot at, doesn't flow and doesn't hurt. Everything at or above it is all of those.
-const COLLECT_PER_CELL = 0.004;   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
+const COLLECT_PER_CELL = 0.0016;   // the original gives 0.004 per square; our squares are 1.6 times smaller in each direction   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
 const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.08, LEAK = 0.02;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
 const TYPES = {
-  command:   { name: 'Ouroboros City', w: 6, h: 6, cost: 0, link: 5, hp: 450, ext: true },
-  collector: { name: 'Collector',   w: 3, h: 3, key: 1, cost: 10, time: 6,  link: 5, greenR: 4.5,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
-  relay:     { name: 'Relay',       w: 3, h: 3, key: 2, cost: 20, time: 10, link: 5, relayLink: 11, hp: 70, ext: true, noGreen: true, info: 'Reaches far – but only to other Relays' },
-  storage:   { name: 'Storage',     w: 3, h: 3, key: 3, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
-  booster:   { name: 'Speed',       w: 3, h: 3, key: 4, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
-  reactor:   { name: 'Reactor',     w: 3, h: 3, key: 5, cost: 40, time: 20, hp: 80, yield: 0.3, info: 'Makes energy on its own, needs no green area' },
-  blaster:   { name: 'Blaster',     w: 3, h: 3, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 6,  cd: 0.16, dmg: 0.5, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
-  mortar:    { name: 'Mortar',      w: 3, h: 3, key: 7, cost: 50, time: 15, hp: 140, range: 9, cd: 1.0, dmg: 2, splash: 3, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
-  portal:    { name: 'Totem', w: 3, h: 3, cost: 10, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 5, info: 'Build it up to escape' }
+  command:   { name: 'Ouroboros City', w: 10, h: 10, cost: 0, link: 8, hp: 450, ext: true },
+  collector: { name: 'Collector',   w: 5, h: 5, key: 1, cost: 10, time: 6,  link: 8, greenR: 7.2,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
+  relay:     { name: 'Relay',       w: 5, h: 5, key: 2, cost: 20, time: 10, link: 8, relayLink: 18, hp: 70, ext: true, noGreen: true, info: 'Reaches far – but only to other Relays' },
+  storage:   { name: 'Storage',     w: 5, h: 5, key: 3, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
+  booster:   { name: 'Speed',       w: 5, h: 5, key: 4, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
+  reactor:   { name: 'Reactor',     w: 5, h: 5, key: 5, cost: 40, time: 20, hp: 80, yield: 0.3, info: 'Makes energy on its own, needs no green area' },
+  blaster:   { name: 'Blaster',     w: 5, h: 5, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 10,  cd: 0.16, dmg: 0.5, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
+  mortar:    { name: 'Mortar',      w: 5, h: 5, key: 7, cost: 50, time: 15, hp: 140, range: 14, cd: 1.0, dmg: 2, splash: 5, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
+  portal:    { name: 'Totem', w: 5, h: 5, cost: 10, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 8, info: 'Build it up to escape' }
 };
 // ---------- hand-made terrain for the special maps (levels 0..10 in steps of 2: never a jump of more than one level) ----------
 function fortMaker(cx, cy, keep) {                        // a walled fortress: rings of ground climb to a wall with gates and corner towers; a low courtyard inside (and a raised keep)
@@ -524,6 +524,7 @@ function sourceCount() {
   // V = how much flood it takes to fill the map up to its highest ground, edge = share of cells next to a level change (rugged = slower flood)
   return Math.max(3, Math.min(6, Math.round(3 + (V / (F * F) - 6500) / 1500 + 4 * (edges / total - 0.2))));
 }
+const PA = (TYPES.portal.w >> 1) + 1;                     // a Totem's anchor lies PA squares up and left of its centre
 function loadLevel(i) {
   levelIdx = i; const L = LEVELS[i]; const R = rng(L.seed);
   const G = Object.assign({ s1: 18, s2: 9, mix: 0.7, off: 0.25, gain: 9, maxLevel: 5, minArea: 130 }, L.gen);   // terrain shape of this map
@@ -559,7 +560,7 @@ function loadLevel(i) {
     const src = ter.slice();
     for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
       const cnt = {};
-      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const px = x + dx, py = y + dy; if (px < 1 || py < 1 || px >= W - 1 || py >= H - 1) continue; const v = src[py * W + px]; cnt[v] = (cnt[v] || 0) + 1; }
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const px = x + dx, py = y + dy; if (px < 1 || py < 1 || px >= W - 1 || py >= H - 1) continue; const v = src[py * W + px]; cnt[v] = (cnt[v] || 0) + 1; }
       let best = src[y * W + x], bc = cnt[best] || 0; for (const k in cnt) if (cnt[k] > bc) { bc = cnt[k]; best = +k; }
       ter[y * W + x] = best;
     }
@@ -584,7 +585,7 @@ function loadLevel(i) {
     }
   }
   // terrain never jumps two levels: any two cells within STEP cells of each other differ by at most one level, so every step is at least STEP cells wide
-  const STEP = Math.max(2, Math.round((G.step || 2) * 0.64));      // the grid is coarser now, so a level step may be fewer squares wide
+  const STEP = G.step || 2;
   for (let changed = true, guard = 0; changed && guard < 80; guard++) {
     changed = false; const src = ter.slice();
     for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
@@ -607,10 +608,10 @@ function loadLevel(i) {
     const BT = TYPES.command, P = L.place, sc = p => [Math.round(p[0] * F), Math.round(p[1] * F)];
     const sq = (x, y, lo, hi) => { if (x + lo < 3 || y + lo < 3 || x + hi > W - 4 || y + hi > H - 4) return false; const h0 = ter[(y + lo) * W + x + lo]; if (h0 >= ROCK) return false; for (let dy = lo; dy <= hi; dy++) for (let dx = lo; dx <= hi; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false; return true; };
     const snap = (p, ok) => { let best = null, bd = Infinity; for (let y = 4; y < H - 4; y++) for (let x = 4; x < W - 4; x++) { if (!ok(x, y)) continue; const d = Math.hypot(x - p[0], y - p[1]); if (d < bd) { bd = d; best = [x, y]; } } return best || p; };
-    const bs = snap(sc(P.base).map(v => v - 3), (x, y) => sq(x, y, 0, BT.w));
+    const bs = snap(sc(P.base).map(v => v - (BT.w >> 1)), (x, y) => sq(x, y, 0, BT.w));
     addBuilding('command', bs[0], bs[1]);
-    for (const p of P.sources) { const q = snap(sc(p), (x, y) => sq(x, y, -1, 1)); emitters.push({ x: q[0], y: q[1], sup: 0, rate: EMITTER_RATE, ph: R() * 6, start: 0 }); }
-    for (const p of P.portals) { const q = snap(sc(p), (x, y) => sq(x, y, -2, 1)); addBuilding('portal', q[0] - 2, q[1] - 2); }
+    for (const p of P.sources) { const q = snap(sc(p), (x, y) => sq(x, y, -2, 2)); emitters.push({ x: q[0], y: q[1], sup: 0, rate: EMITTER_RATE, ph: R() * 6, start: 0 }); }
+    for (const p of P.portals) { const q = snap(sc(p), (x, y) => sq(x, y, -PA, PA - 1)); addBuilding('portal', q[0] - PA, q[1] - PA); }
     renderTerrain(); hideMsg(); setPanel(); updateButtons(); return;
   }
   const BT = TYPES.command;
@@ -641,12 +642,12 @@ function loadLevel(i) {
       return 12;
     };
     let best = null;
-    for (const need of [5, 4, 3, 2, 0]) {
+    for (const need of [9, 7, 5, 3, 0]) {
       let bs = -Infinity;
       for (let yy = 5; yy < H - BT.h - 6; yy++) for (let xx = 5; xx < W - BT.w - 6; xx++) {
         if (!flatAt(xx, yy, BT.w, BT.h)) continue;
         const o = openAt(xx + (BT.w >> 1), yy + (BT.h >> 1)); if (o < need) continue;
-        const lv = ter[yy * W + xx], dt = Math.hypot(xx + 3.5 - tgt[0], yy + 3.5 - tgt[1]);
+        const lv = ter[yy * W + xx], dt = Math.hypot(xx + .5 + BT.w / 2 - tgt[0], yy + .5 + BT.w / 2 - tgt[1]);
         const sc = st.mode === 'high' ? lv * 100 + o * 4 - dt * 0.1 : st.mode === 'at' ? -dt + o * 0.3 : o * 10 - dt * 0.05;
         if (sc > bs) { bs = sc; best = [xx, yy]; }
       }
@@ -663,7 +664,7 @@ function loadLevel(i) {
   const flat5 = (x, y) => {                               // a source needs flat ground: 5x5 cells on one level, so it is never on or next to a level edge
     if (x < 3 || y < 3 || x > W - 4 || y > H - 4) return false;
     const h0 = ter[y * W + x]; if (h0 >= ROCK) return false;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false;   // a flood source needs 3x3 flat squares
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false;   // a flood source needs 5x5 flat squares
     return true;
   };
   const nSources = Math.max(3, L.emitters || sourceCount());     // how many sources the map needs (at least 3 unless a map says otherwise)
@@ -697,7 +698,7 @@ function loadLevel(i) {
     const ex0 = emitters.reduce((t, e) => t + e.x, 0) / emitters.length, ey0 = emitters.reduce((t, e) => t + e.y, 0) / emitters.length;
     const vx = ex0 - bcx, vy = ey0 - bcy, D = Math.hypot(vx, vy), pick = [];
     const eMin = Math.min(...emitters.map(e => Math.hypot(e.x - bcx, e.y - bcy)));
-    const flat4 = (x, y) => { if (x < 3 || y < 3 || x > W - 4 || y > H - 4) return false; const h0 = ter[(y - 2) * W + x - 2]; if (h0 >= ROCK) return false; for (let dy = -2; dy <= 1; dy++) for (let dx = -2; dx <= 1; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false; return true; };   // flat ground under the 3x3 source and its margin
+    const flat4 = (x, y) => { const k = TYPES.portal.w >> 1; if (x < k + 3 || y < k + 3 || x > W - k - 4 || y > H - k - 4) return false; const h0 = ter[(y - PA) * W + x - PA]; if (h0 >= ROCK) return false; for (let dy = -PA; dy <= k; dy++) for (let dx = -PA; dx <= k; dx++) if (ter[(y + dy) * W + x + dx] !== h0) return false; return true; };   // flat ground under a Totem and its margin
     for (let relax = 0; relax < 6 && pick.length < want; relax++) {   // each round relaxes the spacing a little, so even a very rugged map gets all its portal sources
       const dMin = [48, 43, 38, 32, 26, 14][relax] * F, spacing = [38, 34, 30, 25, 20, 16][relax] * F, emMin = [12, 11, 10, 10, 10, 10][relax] * F, cosMin = [-0.3, -0.6, -1, -1, -1, -1][relax], dMax = [1.1, 1.25, 1.5, 1.8, 3, 99][relax] * D, cands = [];
       for (let y = 8; y < H - 8; y++) for (let x = 8; x < W - 8; x++) {
@@ -715,7 +716,7 @@ function loadLevel(i) {
         if (pick.every(p => Math.hypot(p[0] - c[0], p[1] - c[1]) >= spacing)) pick.push(c); else cands.splice(cands.indexOf(c), 1);
       }
     }
-    for (const [x, y] of pick) addBuilding('portal', x - 2, y - 2);
+    for (const [x, y] of pick) addBuilding('portal', x - PA, y - PA);
   }
   renderTerrain(); hideMsg(); setPanel(); updateButtons();
 }
@@ -937,7 +938,7 @@ function step() {
       pk.len = packetLen(pk); packets.push(pk);
     }
   }
-  const pspeed = 5 + 2.5 * nb;
+  const pspeed = 8 + 4 * nb;
   packets = packets.filter(pk => {
     const ok = pk.path.every(b => b.online && buildings.includes(b)), t = pk.target;
     if (ok) {
@@ -980,8 +981,9 @@ function step() {
       {                                                         // shallow flood: 1 ccc on eight cells; deeper flood: 2 ccc on the target and 1 ccc on six neighbours (at most 8 ccc a shot)
         const CCC = 2 * TS, lvB = ter[b.y * W + b.x], deep = cr[ty * W + tx] > CCC + 1e-6;
         const take = (px, py, max) => { if (px < 0 || py < 0 || px >= W || py >= H) return; const j = py * W + px; if (ter[j] >= ROCK || ter[j] > lvB) return; cr[j] = Math.max(0, cr[j] - Math.min(cr[j], max)); };
-        if (deep) { take(tx, ty, 2 * CCC); for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) if (yy !== 0) take(tx + xx, ty + yy, CCC); }
-        else { const sx = Math.sign(bcx - (tx + .5)), sy = Math.sign(bcy - (ty + .5)); for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) if (!(xx === sx && yy === sy)) take(tx + xx, ty + yy, CCC); }
+        for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) {           // deep flood: 2 ccc in the middle, 1 ccc around it; shallow: 1 ccc on a disc
+          const d = Math.hypot(xx, yy); if (deep) { if (d <= 1.2) take(tx + xx, ty + yy, 2 * CCC); else if (d <= 2.6) take(tx + xx, ty + yy, CCC); } else if (d <= 2.5) take(tx + xx, ty + yy, CCC);
+        }
       }
       effects.push({ k: 'hole', x: tx + .5, y: ty + .5, r: 0.6, t: 0.5, max: 0.5, a: 0.5 }); puff(tx + .5, ty + .5, 1, 0.5, FLOODSMOKE, 0.4);   // feedback: a little hole and smoke where it hits
     } else {
@@ -1007,8 +1009,8 @@ function startEscape() {
   state = 'escape'; tool = null; moving = null; sel = null; setPanel();
   const base = buildings.find(b => b.type === 'command'), bc = center(base), ps = buildings.filter(b => b.type === 'portal').map(center);
   const gx = ps.reduce((t, p) => t + p[0], 0) / ps.length, gy = ps.reduce((t, p) => t + p[1], 0) / ps.length;   // the portal opens between the portal sources
-  const px = Math.max(6, Math.min(W - 6, gx)), py = Math.max(6, Math.min(H - 6, gy)), dist = Math.hypot(px - bc[0], py - bc[1]);
-  const fl = Math.max(1.2, Math.min(5, dist / 14));                                  // flight time in seconds: further away takes longer
+  const px = Math.max(9, Math.min(W - 9, gx)), py = Math.max(9, Math.min(H - 9, gy)), dist = Math.hypot(px - bc[0], py - bc[1]);
+  const fl = Math.max(1.2, Math.min(5, dist / 22));                                  // flight time in seconds: further away takes longer
   esc = { t: 0, fl, dur: 1.5 + fl + 0.2, base, bx: bc[0], by: bc[1], px, py, entered: false };
   SFX.portalOpen();
 }
@@ -1018,7 +1020,7 @@ function updateEscape(dt) {
   if (esc.t >= esc.dur && state === 'escape') win();
 }
 function drawEscape() {
-  const e = esc, t = e.t, open = Math.min(1, t / 1.5), R = 4.5 * open * CS, px = e.px * CS, py = e.py * CS;
+  const e = esc, t = e.t, open = Math.min(1, t / 1.5), R = 7 * open * CS, px = e.px * CS, py = e.py * CS;
   const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, R));
   g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.35, 'rgba(120,230,255,.85)'); g.addColorStop(.75, 'rgba(60,110,255,.55)'); g.addColorStop(1, 'rgba(60,110,255,0)');
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, R, 0, 7); ctx.fill();
@@ -1034,8 +1036,8 @@ function drawEscape() {
 function landShell(sh) {
   const { T, tx, ty } = sh;
   effects.push({ k: 'ring', x: tx + .5, y: ty + .5, r: T.splash + 0.5, t: 0.4, max: 0.4 });
-  const CCC = 2 * TS, tl = ter[ty * W + tx];                  // a shell takes up to 4 ccc from each of 36 squares on the target's level and below
-  for (let yy = -2; yy <= 3; yy++) for (let xx = -2; xx <= 3; xx++) {
+  const CCC = 2 * TS, tl = ter[ty * W + tx];                  // a shell takes up to 4 ccc from each of about 36 original squares (90 of ours) on the target's level and below
+  for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 5; xx++) {
     const px = tx + xx, py = ty + yy; if (px < 0 || py < 0 || px >= W || py >= H) continue;
     const j = py * W + px; if (ter[j] >= ROCK || ter[j] > tl) continue; cr[j] = Math.max(0, cr[j] - Math.min(cr[j], 4 * CCC));
   }
@@ -1044,9 +1046,8 @@ function landShell(sh) {
 }
 function shotGain(tx, ty, lvB, bcx, bcy) {                  // the Blaster's damage pattern without applying it (see the firing code)
   const CCC = 2 * TS, v = (px, py, max) => { if (px < 0 || py < 0 || px >= W || py >= H) return 0; const j = py * W + px; if (ter[j] >= ROCK || ter[j] > lvB) return 0; return Math.min(cr[j], max) / CCC; };
-  let g = 0;
-  if (cr[ty * W + tx] > CCC + 1e-6) { g += v(tx, ty, 2 * CCC); for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) if (yy !== 0) g += v(tx + xx, ty + yy, CCC); }
-  else { const sx = Math.sign(bcx - (tx + .5)), sy = Math.sign(bcy - (ty + .5)); for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) if (!(xx === sx && yy === sy)) g += v(tx + xx, ty + yy, CCC); }
+  const deep = cr[ty * W + tx] > CCC + 1e-6; let g = 0;
+  for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) { const d = Math.hypot(xx, yy); if (deep) { if (d <= 1.2) g += v(tx + xx, ty + yy, 2 * CCC); else if (d <= 2.6) g += v(tx + xx, ty + yy, CCC); } else if (d <= 2.5) g += v(tx + xx, ty + yy, CCC); }
   return g;
 }
 function findTarget(b, T) {
@@ -1334,7 +1335,7 @@ function draw() {
     ctx.strokeStyle = 'rgba(170,255,240,.95)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ax * CS, ay * CS); ctx.lineTo(bx * CS, by * CS); ctx.stroke();
   }
   for (const e of emitters) {                              // flood sources: small spiky "virus" stars
-    const px = (e.x + .5) * CS, py = (e.y + .5) * CS, active = tick / TPS >= e.start && e.sup <= 0, R = 19 * CS / 16;
+    const px = (e.x + .5) * CS, py = (e.y + .5) * CS, active = tick / TPS >= e.start && e.sup <= 0, R = 30;
     ctx.save(); ctx.translate(px, py); ctx.rotate(e.ph);
     ctx.beginPath(); for (let i = 0; i < 16; i++) { const r = i % 2 ? R * 0.45 : R, an = i * Math.PI / 8; ctx.lineTo(Math.cos(an) * r, Math.sin(an) * r); } ctx.closePath();
     ctx.fillStyle = active ? '#4d1468' : '#3d3347'; ctx.fill();
@@ -1457,7 +1458,7 @@ function hoverText() {                       // what is under the mouse, in a fe
     else { if (T.ammoMax) t += ` – ammo ${Math.floor(b.ammo)}/${T.ammoMax}`; if (b.off) t += ', turned off'; else if (!b.online && b.type !== 'command') t += ', offline'; }
     return t;
   }
-  if (emitters.some(e => Math.hypot(e.x - x, e.y - y) <= 1.6)) return 'Flood source';
+  if (emitters.some(e => Math.hypot(e.x - x, e.y - y) <= 2.5)) return 'Flood source';
   return '';
 }
 function updateInfo() {
@@ -1877,11 +1878,11 @@ const edItems = () => [...emitters.map(e => ({ kind: 'source', ref: e })), ...bu
 const edCenter = it => it.kind === 'source' ? [it.ref.x + .5, it.ref.y + .5] : center(it.ref);
 function edFlat(it) {                                      // is the ground under it one flat level?
   let cs = [];
-  if (it.kind === 'source') { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cs.push([it.ref.x + dx, it.ref.y + dy]); } else cs = tcells(it.ref.type, it.ref.x, it.ref.y);
+  if (it.kind === 'source') { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) cs.push([it.ref.x + dx, it.ref.y + dy]); } else cs = tcells(it.ref.type, it.ref.x, it.ref.y);
   const lv = new Set(cs.map(([x, y]) => (x < 0 || y < 0 || x >= W || y >= H) ? ROCK : ter[y * W + x])); return lv.size === 1 && !lv.has(ROCK);
 }
 function edHit(c) {
-  for (const e of emitters) if (Math.hypot(e.x + .5 - c.fx, e.y + .5 - c.fy) <= 1.6) return { kind: 'source', ref: e };
+  for (const e of emitters) if (Math.hypot(e.x + .5 - c.fx, e.y + .5 - c.fy) <= 2.5) return { kind: 'source', ref: e };
   for (const b of buildings) if (b.type === 'command' || b.type === 'portal') { const [cx, cy] = center(b), T = TYPES[b.type]; if (Math.abs(cx - c.fx) <= T.w / 2 + 0.5 && Math.abs(cy - c.fy) <= T.h / 2 + 0.5) return { kind: b.type === 'command' ? 'base' : 'portal', ref: b }; }
   return null;
 }
@@ -1902,7 +1903,7 @@ function edStatus(extra) {
 }
 function drawEditorOverlay() {
   for (const it of edItems()) {
-    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 3.6 : it.kind === 'portal' ? 2 : 1.8) * CS;
+    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 6.2 : it.kind === 'portal' ? 3.4 : 2.9) * CS;
     ctx.lineWidth = 3; ctx.strokeStyle = edFlat(it) ? 'rgba(143,227,154,.95)' : 'rgba(255,90,90,.95)'; ctx.setLineDash(ed.drag && ed.drag.ref === it.ref ? [] : [9, 6]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r, 0, 7); ctx.stroke();
   }
   ctx.setLineDash([]);
@@ -1934,7 +1935,7 @@ cv.addEventListener('mousedown', e => {
   if (state !== 'edit' || e.button !== 0) return; const c = cellAt(e), hit = edHit(c);
   if (ed.tool === 'move') { if (hit) { const [cx, cy] = edCenter(hit); ed.drag = Object.assign(hit, { off: [c.fx - cx, c.fy - cy] }); } }
   else if (ed.tool === 'src') { emitters.push({ x: Math.max(3, Math.min(W - 4, c.x)), y: Math.max(3, Math.min(H - 4, c.y)), sup: 0, rate: EMITTER_RATE, ph: Math.random() * 6, start: 0 }); ed.changed = true; edStatus('Flood source added.'); }
-  else if (ed.tool === 'por') { addBuilding('portal', c.x - 2, c.y - 2); ed.changed = true; edStatus('Totem added.'); }
+  else if (ed.tool === 'por') { addBuilding('portal', c.x - PA, c.y - PA); ed.changed = true; edStatus('Totem added.'); }
   else if (ed.tool === 'del' && hit) { if (hit.kind === 'base') { edStatus('The base can&rsquo;t be deleted.'); return; } if (hit.kind === 'source') emitters.splice(emitters.indexOf(hit.ref), 1); else removeBuilding(hit.ref); ed.changed = true; edStatus('Deleted.'); }
 });
 cv.addEventListener('mousemove', e => { if (state === 'edit' && ed.drag) { const c = cellAt(e); edMove(ed.drag, c.fx - ed.drag.off[0], c.fy - ed.drag.off[1]); ed.changed = true; edStatus(); } });
