@@ -1014,14 +1014,14 @@ function startEscape() {
   let gx = ps.reduce((t, p) => t + p[0], 0) / ps.length, gy = ps.reduce((t, p) => t + p[1], 0) / ps.length;   // the portal opens between the totems ...
   if (GATE) { gx = GATE[0]; gy = GATE[1]; }                                                                        // ... unless the map says where
   const px = Math.max(5, Math.min(W - 5, gx)), py = Math.max(5, Math.min(H - 5, gy)), dist = Math.hypot(px - bc[0], py - bc[1]);
-  const fl = Math.max(1.2, Math.min(5, dist / 11));                                  // flight time in seconds: further away takes longer
+  const fl = Math.max(1.5, dist / 2);                                  // the base flies at the same speed as it does in play: 2 squares a second, eased in and out
   esc = { t: 0, fl, dur: 1.5 + fl + TELE + 0.4, base, bx: bc[0], by: bc[1], px, py, entered: false, trail: [] };
   SFX.portalOpen();
 }
 function updateEscape(dt) {
   esc.t += dt;
   const fT = esc.t - 1.5;
-  if (fT >= 0 && fT <= esc.fl) { const p = Math.min(1, fT / esc.fl), k = p * p * (3 - 2 * p); esc.trail.push({ x: esc.bx + (esc.px - esc.bx) * k, y: esc.by + (esc.py - esc.by) * k, t: 0 }); }
+  if (fT >= 0 && fT <= esc.fl) { const p = Math.min(1, fT / esc.fl), k = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; esc.trail.push({ x: esc.bx + (esc.px - esc.bx) * k, y: esc.by + (esc.py - esc.by) * k, t: 0 }); }
   for (const q of esc.trail) q.t += dt; esc.trail = esc.trail.filter(q => q.t < 0.8);
   if (fT >= esc.fl && !esc.entered) { esc.entered = true; SFX.portalEnter(); }              // the teleport starts when the base reaches the portal
   if (esc.t >= esc.dur && state === 'escape') win();
@@ -1036,7 +1036,7 @@ function drawEscape() {
   for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(200,245,255,${0.8 - i * 0.2})`; ctx.beginPath(); ctx.arc(px, py, R * (0.45 + i * 0.2), t * (2 + i) + i, t * (2 + i) + i + 4.2); ctx.stroke(); }
   for (const q of e.trail) { const a = 1 - q.t / 0.8; ctx.fillStyle = `rgba(120,220,255,${a * 0.35})`; ctx.beginPath(); ctx.arc(q.x * CS, q.y * CS - 14, 5 + 13 * a, 0, 7); ctx.fill(); }   // a glowing trail behind the flying base
   if (t < 1.5 || fT > e.fl + TELE) return;
-  const p = Math.min(1, fT / e.fl), k = p * p * (3 - 2 * p), u = Math.max(0, (fT - e.fl) / TELE);
+  const p = Math.min(1, fT / e.fl), k = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2, u = Math.max(0, (fT - e.fl) / TELE);
   const cx = (e.bx + (e.px - e.bx) * k) * CS, cy = (e.by + (e.py - e.by) * k) * CS, lift = Math.min(1, fT / 0.6), bob = Math.sin(t * 5) * 3 * (1 - u);
   const w = Math.pow(Math.max(0, (u - 0.35) / 0.65), 1.6);          // 0 until the warp starts, then 1
   if (u < 0.6) drawRoundShadow(e.base, cx + 3 + 14 * lift, cy + 4 + 20 * lift, (0.4 - 0.14 * lift) * (1 - u / 0.6));   // the shadow on the ground
@@ -1243,17 +1243,17 @@ function drawBuilding(b, ghost, ok, icon) {
       ctx.beginPath(); ctx.moveTo(0, -hs + 3); ctx.lineTo(hs - 3, 0); ctx.lineTo(0, hs - 3); ctx.lineTo(-hs + 3, 0); ctx.closePath();
       ctx.fillStyle = dark; ctx.fill(); ctx.fillStyle = on ? 'rgba(255,60,60,.8)' : 'rgba(120,120,120,.35)'; ctx.fill(); ctx.stroke();
     } break;
-    case 'portal': {                                    // portal source (Totem): a white ring gate with green blades and a red core (not a player building, so no plate)
+    case 'portal': {                                    // portal source (Totem): a green ring gate with white blades and a red core (not a player building, so no plate)
       const R0 = hs * 0.86, cy0 = -hs * 0.1;
       ctx.fillStyle = '#dfe6ee'; ctx.strokeStyle = '#10161d'; ctx.lineWidth = 1.5;                       // a short white stand under the ring
       ctx.beginPath(); ctx.moveTo(-hs * 0.13, cy0 + R0 * 0.8); ctx.lineTo(hs * 0.13, cy0 + R0 * 0.8); ctx.lineTo(hs * 0.2, hs * 0.92); ctx.lineTo(-hs * 0.2, hs * 0.92); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillRect(-hs * 0.36, hs * 0.86, hs * 0.72, hs * 0.12); ctx.strokeRect(-hs * 0.36, hs * 0.86, hs * 0.72, hs * 0.12);
       ctx.save(); ctx.translate(0, cy0);
-      ctx.lineWidth = hs * 0.22; ctx.strokeStyle = '#10161d'; ctx.beginPath(); ctx.arc(0, 0, R0, 0, 7); ctx.stroke();            // the ring: dark outline, white body
-      ctx.lineWidth = hs * 0.15; ctx.strokeStyle = '#dfe6ee'; ctx.beginPath(); ctx.arc(0, 0, R0, 0, 7); ctx.stroke();
+      ctx.lineWidth = hs * 0.24; ctx.strokeStyle = '#1c7a30'; ctx.beginPath(); ctx.arc(0, 0, R0, 0, 7); ctx.stroke();            // the ring: dark green outline, bright green body
+      ctx.lineWidth = hs * 0.15; ctx.strokeStyle = '#46d65a'; ctx.beginPath(); ctx.arc(0, 0, R0, 0, 7); ctx.stroke();
       ctx.rotate(Math.PI / 4 + (on ? tick * 0.045 : 0));                                                  // four green blades turn inside the ring
       for (let i = 0; i < 4; i++) {
-        ctx.save(); ctx.rotate(i * Math.PI / 2); ctx.fillStyle = '#46d65a'; ctx.strokeStyle = '#1c7a30'; ctx.lineWidth = 2;
+        ctx.save(); ctx.rotate(i * Math.PI / 2); ctx.fillStyle = '#e6f7ea'; ctx.strokeStyle = '#1c7a30'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(0, -R0 * 0.2); ctx.quadraticCurveTo(R0 * 0.28, -R0 * 0.45, 0, -R0 * 0.72); ctx.quadraticCurveTo(-R0 * 0.28, -R0 * 0.45, 0, -R0 * 0.2); ctx.fill(); ctx.stroke(); ctx.restore();
       }
       ctx.fillStyle = '#e0443f'; ctx.strokeStyle = '#ffd0cc'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R0 * 0.2, 0, 7); ctx.fill(); ctx.stroke();
