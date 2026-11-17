@@ -1039,14 +1039,14 @@ function drawEscape() {
   const p = Math.min(1, fT / e.fl), k = p * p * (3 - 2 * p), u = Math.max(0, (fT - e.fl) / TELE);
   const cx = (e.bx + (e.px - e.bx) * k) * CS, cy = (e.by + (e.py - e.by) * k) * CS, lift = Math.min(1, fT / 0.6), bob = Math.sin(t * 5) * 3 * (1 - u);
   const w = Math.pow(Math.max(0, (u - 0.35) / 0.65), 1.6);          // 0 until the warp starts, then 1
-  if (u < 0.6) drawShadowOf(e.base, cx + 3 + 14 * lift, cy + 4 + 20 * lift, 1, (0.4 - 0.14 * lift) * (1 - u / 0.6));   // the shadow on the ground
+  if (u < 0.6) drawRoundShadow(e.base, cx + 3 + 14 * lift, cy + 4 + 20 * lift, (0.4 - 0.14 * lift) * (1 - u / 0.6));   // the shadow on the ground
   // the base in the air: full size (it only lifts a little), then it is stretched into a beam of light and gone
-  ctx.save(); ctx.translate(cx, cy - 18 * lift + bob); ctx.scale((1 + 0.18 * lift) * (1 - 0.88 * w), (1 + 0.18 * lift) * (1 + 6 * w)); ctx.globalAlpha = 1 - 0.9 * w; ctx.translate(-cx, -cy);
+  ctx.save(); ctx.translate(cx, cy - 18 * lift + bob); ctx.scale(1 + 0.18 * lift, 1 + 0.18 * lift); ctx.globalAlpha = 1 - Math.min(1, w * 1.6); ctx.translate(-cx, -cy);
   drawBuilding(Object.assign({}, e.base, { x: cx / CS - .5 - T.w / 2, y: cy / CS - .5 - T.h / 2, online: true, busy: 0 }), false);
   ctx.restore();
-  if (u > 0.1) drawShadowOf(e.base, cx, cy - 18 * lift + bob, (1 + 0.18 * lift) * (1 - 0.88 * w) * 1, Math.min(1, (u - 0.1) * 2.2) * (1 - w), '#fff', (1 + 0.18 * lift) * (1 + 6 * w));   // it glows white just before it goes
+  if (u > 0.1) { const gl = Math.min(1, (u - 0.1) * 2.2) * (1 - w), R2 = T.w * CS * 0.75, g2 = ctx.createRadialGradient(cx, cy - 18 * lift, 0, cx, cy - 18 * lift, R2); g2.addColorStop(0, `rgba(255,255,255,${gl})`); g2.addColorStop(1, 'rgba(160,235,255,0)'); ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx, cy - 18 * lift, R2, 0, 7); ctx.fill(); }   // a white glow gathers on the base just before it goes (the base itself keeps its shape)
   if (u > 0.3) {                                             // a column of light, rings along the ground, streaks, sparks and a flash
-    const bw = (1 - w) * CS * 2.6 + 3, bh = CS * 26 * Math.min(1, (u - 0.3) / 0.35), gr = ctx.createLinearGradient(0, cy - bh, 0, cy);
+    const bw = (1 - w) * CS * 2.2 + 3, bh = CS * 26 * Math.min(1, (u - 0.3) / 0.35), gr = ctx.createLinearGradient(0, cy - bh, 0, cy);
     gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(190,245,255,.95)'); ctx.save(); ctx.globalAlpha = 1 - 0.85 * w; ctx.fillStyle = gr; ctx.fillRect(cx - bw / 2, cy - bh, bw, bh); ctx.restore();
     for (let i = 0; i < 3; i++) { const f = ((u - 0.3) * 1.5 + i * 0.28) % 1, r = f * 8 * CS; ctx.strokeStyle = `rgba(160,235,255,${(1 - f) * 0.9})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.38, 0, 0, 7); ctx.stroke(); }
     ctx.lineCap = 'round'; for (let i = 0; i < 18; i++) { const a = i * 0.3491 + 0.2, l0 = (0.6 + (i % 3) * 0.5) * CS, l1 = l0 + (u - 0.3) * (6 + (i % 4)) * CS; ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - u)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * l0, cy + Math.sin(a) * l0 * 0.8); ctx.lineTo(cx + Math.cos(a) * l1, cy + Math.sin(a) * l1 * 0.8); ctx.stroke(); }
@@ -1188,6 +1188,9 @@ function drawShip(col, on) {
   ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 6.283); ctx.fill();
 }
 const shCan = document.createElement('canvas');
+function drawRoundShadow(b, cx, cy, alpha) {               // a round shadow on the ground under a flying building
+  const r = TYPES[b.type].w * CS * 0.5; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(cx, cy, r, r, 0, 0, 7); ctx.fill(); ctx.restore();
+}
 function drawShadowOf(b, cx, cy, sc, alpha, color, scY) {        // a silhouette (black by default) of the building itself, centred at pixel (cx, cy)
   const T = TYPES[b.type], sz = Math.ceil(T.w * CS * 2.2);
   if (shCan.width < sz) { shCan.width = shCan.height = sz; }
@@ -1432,7 +1435,7 @@ function draw() {
     }
     let lift = Math.min(1, p * 5, (1 - p) * 5); lift = lift * lift * (3 - 2 * lift);
     alphaMul = 0.4; drawBuilding(Object.assign({}, b, { x: f.tx, y: f.ty, online: true, busy: 0 }), false); alphaMul = 1;
-    drawShadowOf(b, c0[0] + 3 + 12 * lift, c0[1] + 4 + 18 * lift, 1 - 0.1 * lift, 0.4 - 0.14 * lift);   // the shadow on the ground has the building's own shape
+    drawRoundShadow(b, c0[0] + 3 + 12 * lift, c0[1] + 4 + 18 * lift, 0.4 - 0.14 * lift);   // a round shadow on the ground
     ctx.save(); ctx.translate(c0[0], c0[1] - 16 * lift); ctx.scale(1 + 0.3 * lift, 1 + 0.3 * lift); ctx.translate(-c0[0], -c0[1]);
     drawBuilding(Object.assign({}, b, { x: ix, y: iy, online: true, busy: 0 }), false); ctx.restore();
   }
