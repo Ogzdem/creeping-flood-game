@@ -2079,7 +2079,15 @@ function pumpPreviews() {                                  // a little picture o
   state = 'home'; if (homeEl.querySelector('.maps')) renderMaps();
   setTimeout(pumpPreviews, 40);
 }
-function setHud(on) { for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; document.getElementById('quick').style.display = on ? 'none' : 'flex'; }   // on the start page the two sound switches sit in the corner instead   // the build bar and Menu belong to the map, not the start page
+function fitGame() {                                       // the game fills the browser window: as wide as the width allows, but never so tall that the bars under the map are pushed off the screen
+  const g = document.getElementById('game'), h = document.getElementById('hud'), pn = document.getElementById('panel');
+  for (let k = 0; k < 3; k++) {
+    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(480, Math.floor(Math.min(innerWidth, (innerHeight - extra - 2) * 1.4)));
+    g.style.width = w + 'px'; h.style.width = w + 'px';
+  }
+}
+addEventListener('resize', fitGame);
+function setHud(on) { for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; fitGame(); document.getElementById('quick').style.display = on ? 'none' : 'flex'; }   // on the start page the two sound switches sit in the corner instead   // the build bar and Menu belong to the map, not the start page
 function showHome(view) {
   setHud(false); fbClose(); hideMsg(); state = 'home'; tool = null; sel = null; moving = null; homeEl.style.display = 'block';
   if (view === 'maps') renderMaps(); else renderTitle();
@@ -2181,7 +2189,7 @@ function frame(now) {
   while (acc >= stepDt) { acc -= stepDt; if (!paused && (state === 'play' || state === 'escape' || state === 'won' || state === 'lost')) step(); }
   draw(); if (state === 'edit') drawEditorOverlay(); requestAnimationFrame(frame);
 }
-loadLevel(0); showHome(); MUSIC.apply(); flushLog(); loadRanks(); requestAnimationFrame(frame);
+fitGame(); loadLevel(0); showHome(); MUSIC.apply(); flushLog(); loadRanks(); requestAnimationFrame(frame);
 </script>
 </body>
 </html>
