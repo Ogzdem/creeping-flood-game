@@ -1160,6 +1160,16 @@ function drawShip(col, on) {
   c.addColorStop(0, on ? `rgba(255,246,180,${pulse})` : 'rgba(150,150,150,.8)'); c.addColorStop(0.6, on ? 'rgba(255,190,70,.8)' : 'rgba(100,100,100,.6)'); c.addColorStop(1, 'rgba(255,150,40,0)');
   ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 6.283); ctx.fill();
 }
+const shCan = document.createElement('canvas');
+function drawShadowOf(b, cx, cy, sc, alpha) {                // a black silhouette of the building itself, centred at pixel (cx, cy)
+  const T = TYPES[b.type], sz = Math.ceil(T.w * CS * 2.2);
+  if (shCan.width < sz) { shCan.width = shCan.height = sz; }
+  const g = shCan.getContext('2d'), old = ctx, ax = sz / 2 / CS - .5 - T.w / 2;
+  g.clearRect(0, 0, shCan.width, shCan.height); ctx = g;
+  drawBuilding(Object.assign({}, b, { x: ax, y: ax, online: true, busy: 0, off: false, constructing: false }), false, true, true);
+  ctx = old; g.save(); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, shCan.width, shCan.height); g.restore();
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.drawImage(shCan, -sz / 2, -sz / 2, sz, sz, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+}
 function drawBuilding(b, ghost, ok, icon) {
   const T = TYPES[b.type], [cx, cy] = center(b), px = cx * CS, py = cy * CS, on = icon || (b.online && !(b.busy > 0) && !b.constructing);
   const A = (ghost ? 0.5 : 1) * alphaMul;   // a building under construction is drawn solid (and standing still: animations only run when it is online)
@@ -1395,7 +1405,7 @@ function draw() {
     }
     let lift = Math.min(1, p * 5, (1 - p) * 5); lift = lift * lift * (3 - 2 * lift);
     alphaMul = 0.4; drawBuilding(Object.assign({}, b, { x: f.tx, y: f.ty, online: true, busy: 0 }), false); alphaMul = 1;
-    ctx.fillStyle = `rgba(0,0,0,${0.38 - 0.12 * lift})`; ctx.beginPath(); ctx.roundRect((ix + .5) * CS + 3 + 12 * lift, (iy + .5) * CS + 4 + 18 * lift, T.w * CS, T.h * CS, 8); ctx.fill();
+    drawShadowOf(b, c0[0] + 3 + 12 * lift, c0[1] + 4 + 18 * lift, 1 - 0.1 * lift, 0.4 - 0.14 * lift);   // the shadow on the ground has the building's own shape
     ctx.save(); ctx.translate(c0[0], c0[1] - 16 * lift); ctx.scale(1 + 0.3 * lift, 1 + 0.3 * lift); ctx.translate(-c0[0], -c0[1]);
     drawBuilding(Object.assign({}, b, { x: ix, y: iy, online: true, busy: 0 }), false); ctx.restore();
   }
