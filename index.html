@@ -255,7 +255,7 @@ const ROCK = 99, TPS = 30;
 const HEAL_BASE = 3;                    // the base heals slowly: 3 hp per ball, a ball every second at most (and never while flood lies on it or while it flies)
 const HEAL_COST = 1, HEAL_AMT = 10;   // one green ball repairs 10 hp and costs 1 energy
 const FLOODSMOKE = 'hsla(285,25%,80%,';
-const BURST_SEC = 2, WAVE_AMOUNT = 19;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
+const BURST_SEC = 2, WAVE_AMOUNT = 10;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
 const BALL = 1;   // energy in every ball (building, ammunition and repairs are all 1 energy per ball)
 const FLOOD_IDLE_SEC = 10;   // invisible flood that lies completely still for this long dries up
 const FLOOD_HIDE = 0.012;   // a cell that is already visible stays visible down to this depth, so thin flood at the edge doesn't flicker on and off
@@ -263,7 +263,7 @@ const FLOOD_VIS = 0.02;   // the thinnest flood there is: anything less is not d
 const COLLECT_PER_CELL = 0.004;   // the original's number: energy per second for every square of green area   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
 const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.02, LEAK = 0.005;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
 const TYPES = {
-  command:   { name: 'Ouroboros City', w: 5, h: 5, cost: 0, link: 5, hp: 450, ext: true },
+  command:   { name: 'Ouroboros City', w: 6, h: 6, cost: 0, link: 5, hp: 450, ext: true },
   collector: { name: 'Collector',   w: 2, h: 2, key: 1, cost: 10, time: 6,  link: 5, greenR: 4.5,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
   relay:     { name: 'Relay',       w: 2, h: 2, key: 2, cost: 20, time: 10, link: 5, relayLink: 11, hp: 70, ext: true, noGreen: true, info: 'Reaches far – but only to other Relays' },
   storage:   { name: 'Storage',     w: 2, h: 2, key: 3, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
@@ -1064,9 +1064,7 @@ function findTarget(b, T) {
     for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
       const d = Math.hypot(x + .5 - cx, y + .5 - cy); if (d > R) continue;
       const i = y * W + x; if (ter[i] >= ROCK || ter[i] > lv || !fv[i]) continue;   // everything you can see is a target
-      const gain = shotGain(x, y, lv, cx, cy);              // how much flood this shot would remove (in ccc): it aims where it does the most good
-      let score = 200 - gain * 4 + d * 0.2;
-      if (solid.some(o => Math.abs(o[0] - (x + .5)) <= o[2] && Math.abs(o[1] - (y + .5)) <= o[3])) score = 100 - gain * 4 + d * 0.2;   // flood that can hurt a building comes first
+      const score = d;                                      // the Blaster always shoots the nearest flood first
       cands.push([x, y, score]); if (score < bestScore) bestScore = score;
     }
     if (!cands.length) return null;
@@ -1165,7 +1163,7 @@ function drawShip(col, on) {
 function drawBuilding(b, ghost, ok, icon) {
   const T = TYPES[b.type], [cx, cy] = center(b), px = cx * CS, py = cy * CS, on = icon || (b.online && !(b.busy > 0) && !b.constructing);
   const A = (ghost ? 0.5 : 1) * alphaMul;   // a building under construction is drawn solid (and standing still: animations only run when it is online)
-  ctx.save(); ctx.translate(px, py); ctx.globalAlpha = A; ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 5;   // a soft shadow keeps the shapes readable on any ground
+  ctx.save(); ctx.translate(px, py); ctx.globalAlpha = A; ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 3; ctx.shadowOffsetX = T.w * CS * 0.07; ctx.shadowOffsetY = T.w * CS * 0.1;   // a short shadow to the lower right, like the terrain's
   const col = ghost ? (ok === true ? '#4fd1c5' : ok === 'warn' ? '#ffc247' : '#e05252') : (on ? '#cfe9f2' : '#6c7683');
   ctx.fillStyle = '#10161d'; ctx.strokeStyle = col; ctx.lineWidth = 2;
   const hs = T.w * CS / 2 - 1.5, u = hs / 14;
@@ -1240,7 +1238,7 @@ function drawBuilding(b, ghost, ok, icon) {
   if (T.portal && !b.online) return;                      // a portal source shows no bars until it is connected
   const bw = T.w * CS * 0.8, by = (b.y + .5 + T.h) * CS + 3;
   if (b.constructing) { ctx.fillStyle = '#123'; ctx.fillRect(px - bw / 2, by, bw, 3); ctx.fillStyle = '#ffd34d'; ctx.fillRect(px - bw / 2, by, bw * b.progress, 3); }   // while it is being built the build progress fills the meter ...
-  else { ctx.fillStyle = '#400'; ctx.fillRect(px - bw / 2, by, bw, 3); ctx.fillStyle = '#4c4'; ctx.fillRect(px - bw / 2, by, bw * b.hp / T.hp, 3); }   // ... and the health meter takes over when it is finished
+  else if (b.hp < T.hp - 0.01) { ctx.fillStyle = '#400'; ctx.fillRect(px - bw / 2, by, bw, 3); ctx.fillStyle = '#4c4'; ctx.fillRect(px - bw / 2, by, bw * b.hp / T.hp, 3); }   // ... and a health meter shows only on a finished building that has been damaged
   if (T.ammoMax && !b.constructing) { const ay = (b.y + .5) * CS - 5; ctx.fillStyle = '#123'; ctx.fillRect(px - bw / 2, ay, bw, 3); ctx.fillStyle = '#ffd34d'; ctx.fillRect(px - bw / 2, ay, bw * b.ammo / T.ammoMax, 3); }
 }
 
@@ -1930,7 +1928,7 @@ function edStatus(extra) {
 }
 function drawEditorOverlay() {
   for (const it of edItems()) {
-    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 3.4 : it.kind === 'gate' ? 2.4 : it.kind === 'portal' ? 1.8 : 1.6) * CS;
+    const [cx, cy] = edCenter(it), r = (it.kind === 'base' ? 4.1 : it.kind === 'gate' ? 2.4 : it.kind === 'portal' ? 1.8 : 1.6) * CS;
     ctx.lineWidth = 3; ctx.strokeStyle = it.kind === 'gate' ? 'rgba(111,227,255,.95)' : edFlat(it) ? 'rgba(143,227,154,.95)' : 'rgba(255,90,90,.95)'; ctx.setLineDash(ed.drag && ed.drag.ref === it.ref ? [] : [9, 6]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r, 0, 7); ctx.stroke();
     if (it.kind === 'gate') { ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx * CS, cy * CS, r * 0.45, 0, 7); ctx.stroke(); ctx.fillStyle = 'rgba(111,227,255,.95)'; ctx.font = '600 15px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('GATE', cx * CS, cy * CS - r - 6); }
   }
