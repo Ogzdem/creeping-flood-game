@@ -188,6 +188,30 @@
   #help .hptx { flex:1; } #help h2 { margin:0 0 10px; font-size:24px; font-weight:600; } #help ul { margin:0; padding-left:20px; font-size:15px; line-height:1.5; } #help li { margin:0 0 9px; }
   #help .hpnav { display:flex; gap:12px; align-items:center; } #hpDots { display:flex; gap:6px; } #hpDots i { width:9px; height:9px; border-radius:50%; background:#3a4756; display:block; } #hpDots i.on { background:#fff; }
   @media (max-width:760px) { #help .hp { flex-direction:column; } }
+
+  /* ---- fixed sizes for the bars under the map: nothing moves or grows with its text ---- */
+  #panel { height:46px; min-height:46px; max-height:46px; flex-wrap:nowrap; overflow:hidden; width:100%; padding:4px 8px; gap:8px; font-size:12px; line-height:1.25; }
+  #panel > b { flex:none; }
+  #panel > span:not(.sp) { flex:1 1 0; min-width:0; max-height:30px; overflow:hidden; }
+  #panel .sp { display:none; }
+  #panel button { flex:none; width:78px; height:28px; padding:0; }
+  #hud { height:98px; min-height:98px; max-height:98px; flex-wrap:nowrap; width:100%; align-items:stretch; overflow:visible; }
+  #hud > .box, #hud > .stack, #hud > #bMenu { flex:none; min-width:0; }
+  #hud > .box:first-child { flex:1 1 0; overflow:hidden; }
+  #tools { display:grid; grid-template-columns:repeat(3, 1fr); grid-auto-rows:26px; gap:3px; }
+  #tools button { min-width:0; overflow:hidden; white-space:nowrap; height:26px; }
+  #elev { width:66px; overflow:hidden; }
+  #meter { min-width:0; }
+  #en { width:176px; overflow:hidden; }
+  #en .ebar { min-width:0; width:100%; }
+  #en .bars { grid-template-columns:62px 1fr 28px; }
+  #en .bars > b { text-align:right; }
+  .stack { width:116px; }
+  .stack .box { min-width:0; width:100%; overflow:hidden; white-space:nowrap; }
+  #ctl { width:124px; display:flex; align-items:center; justify-content:center; }
+  #ctl .g { display:grid; grid-template-columns:repeat(3, 36px); grid-auto-rows:28px; gap:4px; }
+  #ctl button { width:36px; min-width:0; height:28px; padding:0; display:flex; align-items:center; justify-content:center; }
+  #bMenu { width:58px; margin-left:0; align-self:flex-start; }
 </style>
 </head>
 <body>
@@ -230,7 +254,7 @@
       <span>Deficit</span><span class="bar"><div id="bF" style="background:#ff4d4d"></div></span><b id="sF">0</b>
     </div></div>
   <div class="stack">
-    <div class="box score"><span class="lbl">Mission Score</span><span class="big" id="sScore">10000</span><span style="font-size:10px;color:#9fb0ff">Portal gates <b id="sS" style="color:#fff">0</b> · Flood <b id="sC" style="color:#ff9bd6">0</b></span></div>
+    <div class="box score"><span class="lbl">Mission Score</span><span class="big" id="sScore">10000</span><span style="font-size:10px;color:#9fb0ff">Gates <b id="sS" style="color:#fff">0</b> · Flood <b id="sC" style="color:#ff9bd6">0</b></span></div>
     <div class="box spore" id="sporeBox"><span class="lbl">Spore Attack</span><span style="font-size:15px;font-weight:600;opacity:.55">--:--</span></div>
   </div>
   <div class="box" id="ctl"><div class="g">
@@ -2096,7 +2120,7 @@ function pumpPreviews() {                                  // a little picture o
 function fitGame() {                                       // the game fills the browser window: as wide as the width allows, but never so tall that the bars under the map are pushed off the screen
   const g = document.getElementById('game'), h = document.getElementById('hud'), pn = document.getElementById('panel');
   for (let k = 0; k < 3; k++) {
-    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(480, Math.floor(Math.min(innerWidth, (innerHeight - extra - 2) * 1.4)));
+    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 2) * 1.4)));
     g.style.width = w + 'px'; h.style.width = w + 'px';
   }
 }
