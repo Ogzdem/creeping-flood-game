@@ -223,6 +223,10 @@
   #tools { grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(2, 26px); }
   #bMenu { position:absolute; right:10px; top:10px; z-index:50; width:64px; height:28px; padding:0; background:rgba(16,22,29,.88); }
   #menu { position:absolute; right:10px; top:44px; bottom:auto; z-index:60; }
+
+  /* ---- equal gaps (6 px) between the map, the description box, the build bar and the bottom of the window ---- */
+  #panel { margin:6px 8px 0; }
+  #hud { margin:6px 8px 6px; border:1px solid var(--line); border-radius:4px; padding:3px 6px; background:#10161d; width:calc(100% - 16px); }
 </style>
 </head>
 <body>
@@ -2131,8 +2135,8 @@ function pumpPreviews() {                                  // a little picture o
 function fitGame() {                                       // the game fills the browser window: as wide as the width allows, but never so tall that the bars under the map are pushed off the screen
   const g = document.getElementById('game'), h = document.getElementById('hud'), pn = document.getElementById('panel');
   for (let k = 0; k < 3; k++) {
-    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 8) * 1.4)));
-    g.style.width = w + 'px'; h.style.width = w + 'px';
+    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 20) * 1.4)));
+    g.style.width = w + 'px'; h.style.width = (w - 16) + 'px';
   }
 }
 addEventListener('resize', fitGame);
