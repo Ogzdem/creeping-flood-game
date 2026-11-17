@@ -137,7 +137,7 @@
   #home .goldbtn { background:linear-gradient(#d9b45a, #aa8328 50%, #8a6a18 52%, #b48f33); border:1px solid #6a500d; }
   #home .graybtn { background:linear-gradient(#bdbdbd, #858585 50%, #6a6a6a 52%, #8d8d8d); border:1px solid #444; }
   #home .redbtn { background:linear-gradient(#e0554a, #b02218 50%, #8e1a12 52%, #b8362b); border:1px solid #6a100a; }
-  #home .today { width:30cqw; border:2px solid #3b4aa8; background:rgba(18,22,70,.88); border-radius:1.4cqw; padding:.8cqw 1cqw 1cqw; box-shadow:0 0 1.6cqw rgba(70,90,255,.4); }
+  #home .today { display:flex; flex-direction:column; align-items:center; width:30cqw; border:2px solid #3b4aa8; background:rgba(18,22,70,.88); border-radius:1.4cqw; padding:.8cqw 1cqw 1cqw; box-shadow:0 0 1.6cqw rgba(70,90,255,.4); }
   #home .today .th { font:400 2.6cqw 'Trebuchet MS',sans-serif; color:#fff; margin-bottom:.2cqw; }
   #home .mpanel { margin:2.4cqw auto 0; width:100%; border:2px solid #2f7a3d; background:rgba(16,66,26,.55); border-radius:2cqw; padding:2cqw 1.6cqw; display:grid; grid-template-columns:repeat(3,1fr); gap:2cqw .8cqw; justify-items:center; }
   #home .tile { background:none; border:0; color:#fff; display:flex; flex-direction:column; align-items:center; gap:.4cqw; cursor:pointer; padding:0; }
@@ -151,6 +151,8 @@
   #home .tile .tick { position:absolute; right:.5cqw; top:.4cqw; font-style:normal; background:#2f7a3d; color:#fff; border-radius:50%; width:2cqw; height:2cqw; line-height:2cqw; text-align:center; font-size:1.4cqw; }
   #home .mnote { margin:2cqw 0 4cqw; font:400 2.1cqw/1.5 'Trebuchet MS',sans-serif; color:#e6ecff; }
   #home.mview .small { position:static; margin-top:1cqw; text-align:left; }
+  #home .sndb { position:absolute; left:5cqw; bottom:5.5cqh; display:flex; gap:.8cqw; } #home .sndb button { padding:.7cqw 1cqw; display:flex; align-items:center; }
+  #home.mview .sndb { position:static; margin-top:1.4cqw; justify-content:flex-start; }
   #home.title { container-type:size; display:block; overflow:hidden; padding:0; }
   #home .planet { position:absolute; left:23cqw; top:27cqh; width:31cqw; height:auto; filter:drop-shadow(0 0 3cqw rgba(90,140,255,.35)); pointer-events:none; }
   #home .ttl { position:absolute; left:5cqw; top:2cqh; font:300 10.5cqw/0.93 'Trebuchet MS','Segoe UI',sans-serif; text-align:left; background:linear-gradient(#7d9bff 0%, #4468f0 60%, #3552d8 100%); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 1.2cqw rgba(70,110,255,.55)); }
@@ -1500,7 +1502,7 @@ function setIcons() {
   const snd = muted ? ICON.mute : ICON.sound, mus = musicMuted ? ICON.musicOff : ICON.music, set = (id, h) => { const e = document.getElementById(id); if (e) e.innerHTML = h; };
   set('bPause', paused ? ICON.play : ICON.pause);
   set('bSound', snd); set('qSound', snd); set('bMusic', mus); set('qMusic', mus);            // the same two switches in the bottom bar, on the start page ...
-  set('tSnd', muted ? 'unmute sounds' : 'mute sounds'); set('tMus', musicMuted ? 'unmute menu music' : 'mute menu music');
+  set('tSnd', snd); set('tMus', mus);
   set('optSnd', snd + ' Sound effects ' + (muted ? 'off' : 'on')); set('optMusB', mus + ' Music ' + (musicMuted ? 'off' : 'on'));   // ... and in Options: always in step
 }
 function updateButtons() {
@@ -1575,7 +1577,7 @@ function saveMute() { store.set('floodline_mute', { sfx: muted, music: musicMute
 function toggleSfx() { muted = !muted; if (!muted) SFX.unlock(); saveMute(); }                     // sound effects only
 function toggleMusic() { musicMuted = !musicMuted; SFX.unlock(); MUSIC.apply(true); saveMute(); }   // the music only
 for (const id of ['bSound', 'qSound', 'optSnd']) document.getElementById(id).onclick = toggleSfx;
-document.getElementById('home').addEventListener('click', e => { if (e.target.id === 'tSnd') toggleSfx(); else if (e.target.id === 'tMus') toggleMusic(); });
+document.getElementById('home').addEventListener('click', e => { if (e.target.closest('#tSnd')) toggleSfx(); else if (e.target.closest('#tMus')) toggleMusic(); });
 for (const id of ['bMusic', 'qMusic', 'optMusB']) document.getElementById(id).onclick = toggleMusic;
 const menuEl = document.getElementById('menu'), menuBtn = document.getElementById('bMenu');
 menuBtn.onclick = e => { document.getElementById('bEditor').style.display = DEV && state === 'play' && !LEVELS[levelIdx].test ? '' : 'none'; document.getElementById('bRestart').style.display = document.getElementById('bExit').style.display = state === 'home' ? 'none' : ''; menuEl.classList.toggle('open'); e.stopPropagation(); };
@@ -2022,7 +2024,7 @@ function renderTitle() {
     <div class="menu-r"><button id="hPlay" class="gbtn">Play</button><button id="hOpt" class="gbtn">Options</button><button id="hFb" class="gbtn">Feedback</button><button id="hHelp" class="ybtn">How To Play</button></div>
     <div class="bl"><button id="hRanks" class="bbtn">Rankings</button><button id="hPriv" class="gbtn">Privacy</button></div>
     <div class="tag">Hold back the flood. Open the portal. Take Ouroboros City home.</div>
-    <div class="small">VER: ${VERSION} ${STAGE}<a id="tSnd"></a><a id="tMus"></a></div>`;
+    <div class="small">VER: ${VERSION} ${STAGE}</div><div class="sndb"><button id="tSnd" title="Sound effects on/off"></button><button id="tMus" title="Music on/off"></button></div>`;
   wireHomeCommon(); lastIcons = ''; setIcons();
 }
 const LOCK = '<svg class="lock" viewBox="0 0 24 24" width="44" height="44"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="#e8eef5" stroke-width="2.2" stroke-linecap="round"/><rect x="4.5" y="10" width="15" height="11" rx="2.2" fill="#e8eef5"/><circle cx="12" cy="15.2" r="1.7" fill="#10161d"/><rect x="11.2" y="15.5" width="1.6" height="3.2" rx=".8" fill="#10161d"/></svg>';
@@ -2043,7 +2045,7 @@ function renderMaps() {
     </div>
     <div class="mpanel">${restIdx.map(i => tile(LEVELS[i], i)).join('')}</div>
     <div class="mnote">Clear a map to open the next three.<br>More missions are on the way &ndash; check back soon!</div>
-    <div class="small">VER: ${VERSION} ${STAGE}<a id="tSnd"></a><a id="tMus"></a></div>`;
+    <div class="small">VER: ${VERSION} ${STAGE}</div><div class="sndb"><button id="tSnd" title="Sound effects on/off"></button><button id="tMus" title="Music on/off"></button></div>`;
   homeEl.querySelectorAll('.tile').forEach(b => b.onclick = () => { const i = +b.dataset.i; if (!isUnlocked(i)) return; homeEl.style.display = 'none'; setHud(true); resetEnd(); loadLevel(i); });
   wireHomeCommon(); lastIcons = ''; setIcons();
 }
