@@ -2132,11 +2132,12 @@ function pumpPreviews() {                                  // a little picture o
   state = 'home'; if (homeEl.querySelector('.maps')) renderMaps();
   setTimeout(pumpPreviews, 40);
 }
+const RIM = 30 / 1600;
 function fitGame() {                                       // the game fills the browser window: as wide as the width allows, but never so tall that the bars under the map are pushed off the screen
   const g = document.getElementById('game'), h = document.getElementById('hud'), pn = document.getElementById('panel');
   for (let k = 0; k < 3; k++) {
-    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 20) * 1.4)));
-    g.style.width = w + 'px'; h.style.width = (w - 16) + 'px';
+    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 20) * 1.4 / (1 - RIM))));      // the map has a dark rim of rock along its lower edge (RIM of its height): the description box is pulled up over it so the visible gap is the same 6 px as below the box
+    g.style.width = w + 'px'; h.style.width = (w - 16) + 'px'; pn.style.marginTop = (6 - RIM * w / 1.4) + 'px';
   }
 }
 addEventListener('resize', fitGame);
