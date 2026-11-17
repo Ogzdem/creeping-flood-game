@@ -1857,7 +1857,7 @@ function showPrivacy() {
   showMsg(`<div class="card" style="grid-template-columns:1fr"><h2>Privacy</h2>
     <div><b>What is sent.</b> When you send feedback, finish a map or add your initials to the ranking, the game sends what you wrote, the map, your score and play time, the game version and a few game numbers (such as how many buildings you had). It never asks for your name or email &ndash; please don&rsquo;t write any.</div>
     <div><b>The ranking is public.</b> Your initials and score are shown to every player.</div>
-    <div><b>Who can read it.</b> Feedback is stored on a server and can only be read by the developer. It is used to improve the game and is deleted when the test period ends.</div>
+    <div><b>Who can read it.</b> Feedback is stored on a server and can only be read by the developer, who may use an AI assistant to read and summarise it. It is used to improve the game and is deleted when the test period ends.</div>
     <div><b>On your device.</b> The game keeps your settings, volume and progress (unlocked maps) in your browser&rsquo;s local storage. There are no cookies, no tracking and no ads.</div>
     <div><b>The web host</b> (GitHub) may log visits, such as IP addresses, under its own privacy policy.</div>
     <div><b>Questions or deletion.</b> ${PRIVACY_CONTACT ? html(PRIVACY_CONTACT) : 'Ask the person who sent you the link.'}</div>
@@ -1865,47 +1865,7 @@ function showPrivacy() {
   document.getElementById('pClose').onclick = hideMsg;
 }
 
-// hidden admin view (add #admin to the address): the developer signs in and reads, exports and handles the feedback
-let adminToken = null;
-const fbLine = x => `#${x.id} · ${String(x.created_at).slice(0, 16).replace('T', ' ')} · v${x.version} · ${x.kind}${x.map ? ' · ' + x.map : ''}${x.result ? ' · ' + x.result : ''}${x.rating ? ' · rating ' + x.rating + ' (' + x.difficulty + ')' : ''}${x.score != null ? ' · score ' + x.score : ''}${x.status === 'done' ? ' · handled' : ''}`;
-const fbBody = x => [...(x.points || []).map(p => `- [${p.type}${p.map ? ' / ' + p.map : ''}] ${p.text}`), x.comment ? 'Comment: ' + x.comment : ''].filter(Boolean).join('\n');
-function showAdmin() {
-  const card = h => showMsg(`<div class="card" style="grid-template-columns:1fr"><h2>Admin</h2>${h}</div>`);
-  if (!online()) {                                         // no server set up: only what this device has saved
-    const log = store.get('floodline_log', []).slice().reverse();
-    card(`<p>No server is connected. ${log.length} item(s) saved on this device.</p><textarea id="aOut" rows="14" readonly>${html(log.map(x => JSON.stringify(x, null, 1)).join('\n\n'))}</textarea><div><button id="aClose">Close</button></div>`);
-    document.getElementById('aClose').onclick = hideMsg; return;
-  }
-  if (!adminToken) {
-    card(`<div>Email <input id="aMail" type="email" style="text-transform:none;width:230px"> Password <input id="aPass" type="password" style="text-transform:none;width:170px"> <button id="aGo">Sign in</button></div><div id="aErr" style="color:#ff8a8a"></div><div><button id="aClose">Close</button></div>`);
-    const go = () => api('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email: document.getElementById('aMail').value.trim(), password: document.getElementById('aPass').value }) })
-      .then(r => r.json()).then(j => { if (j.access_token) { adminToken = j.access_token; showAdmin(); } else document.getElementById('aErr').textContent = 'Could not sign in.'; })
-      .catch(() => { document.getElementById('aErr').textContent = 'No connection.'; });
-    document.getElementById('aGo').onclick = go; document.getElementById('aPass').onkeydown = e => { if (e.key === 'Enter') go(); }; document.getElementById('aClose').onclick = hideMsg; return;
-  }
-  adminList('feedback');
-}
-function adminList(table) {
-  api('/rest/v1/' + table + '?select=*&order=created_at.desc&limit=300', {}, adminToken).then(r => { if (r.status === 401) { adminToken = null; showAdmin(); return null; } return r.json(); }).then(rows => {
-    if (!rows) return; const fb = table === 'feedback';
-    showMsg(`<div class="card" style="grid-template-columns:1fr"><h2>Admin</h2>
-      <div class="btns" style="margin:0"><button id="aTabF"${fb ? ' class="sel"' : ''}>Feedback</button><button id="aTabS"${fb ? '' : ' class="sel"'}>Scores</button><span style="flex:1"></span><button id="aClose">Close</button></div>
-      <div style="max-height:34vh;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:6px">${rows.map(x => `<label style="display:block;margin:5px 0"><input type="checkbox" data-id="${x.id}" style="width:auto;text-transform:none"> ${html(fb ? fbLine(x) : `#${x.id} · ${x.map} · ${x.initials} · ${x.score} · v${x.version}`)}${fb && fbBody(x) ? '<div style="color:var(--dim);white-space:pre-wrap;margin-left:22px">' + html(fbBody(x)) + '</div>' : ''}</label>`).join('') || 'Nothing yet.'}</div>
-      <div class="btns" style="margin:0"><button id="aAll">Select all</button><button id="aExp">Show selected as text (for Claude)</button>${fb ? '<button id="aDone">Mark handled</button>' : ''}<button id="aDel">Delete selected</button></div>
-      <textarea id="aOut" rows="7" readonly placeholder="Selected rows appear here as plain text – copy it and paste it to Claude."></textarea></div>`);
-    const $ = id => document.getElementById(id), picked = () => [...document.querySelectorAll('#msg input[data-id]:checked')].map(i => +i.dataset.id), byId = new Map(rows.map(x => [x.id, x]));
-    $('aClose').onclick = hideMsg; $('aTabF').onclick = () => adminList('feedback'); $('aTabS').onclick = () => adminList('scores');
-    $('aAll').onclick = () => document.querySelectorAll('#msg input[data-id]').forEach(i => { i.checked = true; });
-    $('aExp').onclick = () => {
-      const txt = picked().map(id => { const x = byId.get(id); return fb ? fbLine(x) + '\n' + fbBody(x) : fbLine({ id: x.id, created_at: x.created_at, version: x.version, kind: 'score', map: x.map, score: x.score }) + ' · ' + x.initials; }).join('\n\n');
-      $('aOut').value = txt; $('aOut').select(); try { navigator.clipboard.writeText(txt); } catch (e) { /* select + copy by hand */ }
-    };
-    const change = (method, body) => { const ids = picked(); if (!ids.length) return; api('/rest/v1/' + table + '?id=in.(' + ids.join(',') + ')', { method, body, headers: { Prefer: 'return=minimal' } }, adminToken).then(() => adminList(table)); };
-    if ($('aDone')) $('aDone').onclick = () => change('PATCH', JSON.stringify({ status: 'done' }));
-    $('aDel').onclick = () => { if (picked().length && confirm('Delete ' + picked().length + ' row(s)?')) change('DELETE'); };
-  }).catch(() => { document.getElementById('msg').innerHTML = '<div class="card">No connection.</div>'; });
-}
-addEventListener('hashchange', () => { if (location.hash === '#admin') showAdmin(); else if (location.hash === '#dev') location.reload(); });
+addEventListener('hashchange', () => { if (location.hash === '#dev') location.reload(); });
 addEventListener('keydown', e => {
   if (e.target && /^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)) { if (e.key === 'Escape') fbClose(); return; }   // typing in the feedback form must not trigger game keys
   if (LEVELS[levelIdx].test && state === 'play') {          // test-map controls
@@ -1928,7 +1888,7 @@ function frame(now) {
   while (acc >= stepDt) { acc -= stepDt; if (!paused && (state === 'play' || state === 'escape' || state === 'won' || state === 'lost')) step(); }
   draw(); requestAnimationFrame(frame);
 }
-loadLevel(0); showHome(); MUSIC.apply(); if (location.hash === '#admin') showAdmin(); flushLog(); loadRanks(); requestAnimationFrame(frame);
+loadLevel(0); showHome(); MUSIC.apply(); flushLog(); loadRanks(); requestAnimationFrame(frame);
 </script>
 </body>
 </html>
