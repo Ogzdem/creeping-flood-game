@@ -214,6 +214,15 @@
   #ctl .g { display:grid; grid-template-columns:repeat(3, 36px); grid-auto-rows:28px; gap:4px; }
   #ctl button { width:36px; min-width:0; height:28px; padding:0; display:flex; align-items:center; justify-content:center; }
   #bMenu { width:58px; margin-left:0; align-self:flex-start; }
+
+  /* ---- second pass: two rows of buildings, Menu in the corner of the map, the description in a box of its own ---- */
+  #panel { height:34px; min-height:34px; max-height:34px; width:calc(100% - 16px); margin:5px 8px 0; padding:3px 10px; background:#10161d; border:1px solid var(--line); border-radius:4px; align-items:center; }
+  #panel > span:not(.sp) { max-height:none; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+  #panel button { width:74px; height:24px; }
+  #hud { height:78px; min-height:78px; max-height:78px; }
+  #tools { grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(2, 26px); }
+  #bMenu { position:absolute; right:10px; top:10px; z-index:50; width:64px; height:28px; padding:0; background:rgba(16,22,29,.88); }
+  #menu { position:absolute; right:10px; top:44px; bottom:auto; z-index:60; }
 </style>
 </head>
 <body>
@@ -238,6 +247,8 @@
     <div class="fbn">The game is paused while this window is open.</div></div>
   <div id="msg"></div>
   <div id="home"></div>
+  <button id="bMenu" title="Menu">Menu</button>
+  <div id="menu"><button id="bHelp">Help</button><button id="bFeedback">Feedback</button><button id="bOptions">Options</button><button id="bEditor" style="display:none">Editor</button><span id="levels" style="display:contents"></span><button id="bRestart">Restart</button><button id="bExit">Main menu</button></div>
   <div id="quick"><button id="qSound" title="Sound effects on/off"></button><button id="qMusic" title="Music on/off"></button></div>
   <div id="coord"></div>
   <div id="testinfo"></div>
@@ -263,8 +274,6 @@
     <button id="bPause" title="Pause (space)"></button><button id="bSound" title="Sound effects on/off"></button><button id="bMusic" title="Music on/off"></button>
     <button id="b1" class="sel">x1</button><button id="b2">x2</button><button id="b4">x4</button>
   </div></div>
-  <button id="bMenu" title="Menu">Menu</button>
-  <div id="menu"><button id="bHelp">Help</button><button id="bFeedback">Feedback</button><button id="bOptions">Options</button><button id="bEditor" style="display:none">Editor</button><span id="levels" style="display:contents"></span><button id="bRestart">Restart</button><button id="bExit">Main menu</button></div>
 </div>
 </div>
 
@@ -2122,12 +2131,12 @@ function pumpPreviews() {                                  // a little picture o
 function fitGame() {                                       // the game fills the browser window: as wide as the width allows, but never so tall that the bars under the map are pushed off the screen
   const g = document.getElementById('game'), h = document.getElementById('hud'), pn = document.getElementById('panel');
   for (let k = 0; k < 3; k++) {
-    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 2) * 1.4)));
+    const extra = (h.style.display === 'none' ? 0 : h.offsetHeight) + (pn.style.display === 'none' ? 0 : pn.offsetHeight), w = Math.max(840, Math.floor(Math.min(innerWidth, (innerHeight - extra - 8) * 1.4)));
     g.style.width = w + 'px'; h.style.width = w + 'px';
   }
 }
 addEventListener('resize', fitGame);
-function setHud(on) { for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; fitGame(); document.getElementById('quick').style.display = on ? 'none' : 'flex'; }   // on the start page the two sound switches sit in the corner instead   // the build bar and Menu belong to the map, not the start page
+function setHud(on) { document.getElementById('bMenu').style.display = on ? '' : 'none'; if (!on) document.getElementById('menu').classList.remove('open'); for (const id of ['hud', 'panel']) document.getElementById(id).style.display = on ? '' : 'none'; fitGame(); document.getElementById('quick').style.display = on ? 'none' : 'flex'; }   // on the start page the two sound switches sit in the corner instead   // the build bar and Menu belong to the map, not the start page
 function showHome(view) {
   setHud(false); fbClose(); hideMsg(); state = 'home'; tool = null; sel = null; moving = null; homeEl.style.display = 'block';
   if (view === 'maps') renderMaps(); else renderTitle();
