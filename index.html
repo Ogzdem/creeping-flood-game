@@ -326,7 +326,7 @@ const SFX = (() => {
     src.connect(f); f.connect(g); g.connect(dest(pan)); src.start(t); src.stop(t + dur + 0.02);
   }
   return {
-    unlock, ctx: () => ac, setVol(v) { vol = v; if (master) master.gain.setTargetAtTime(0.7 * v, ac.currentTime, 0.05); },
+    unlock, ctx: () => ac, setVol(v) { vol = v; if (master) { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setValueAtTime(0.7 * v, ac.currentTime); } },   // changes right away, no fade
     blaster(pan) {                                        // weak laser zap + small cannon pop
       if (!ready() || !ok('b', 70)) return;
       tone('sawtooth', 1500, 260, 0.11, 0.028, 0, pan); noise(0.09, 0.05, 'lowpass', 1800, 300, 0, pan); tone('sine', 150, 55, 0.1, 0.085, 0, pan);
@@ -1485,7 +1485,7 @@ document.getElementById('b1').onclick = () => setSpeed(1);
 document.getElementById('b2').onclick = () => setSpeed(2);
 document.getElementById('b4').onclick = () => setSpeed(4);
 document.getElementById('bPause').onclick = () => paused = !paused;
-document.getElementById('bSound').onclick = () => { muted = !muted; if (!muted) SFX.unlock(); MUSIC.apply(); };   // sound comes later
+document.getElementById('bSound').onclick = () => { muted = !muted; if (!muted) SFX.unlock(); MUSIC.apply(true); };   // sound comes later
 const menuEl = document.getElementById('menu'), menuBtn = document.getElementById('bMenu');
 menuBtn.onclick = e => { document.getElementById('bRestart').style.display = document.getElementById('bExit').style.display = state === 'home' ? 'none' : ''; menuEl.classList.toggle('open'); e.stopPropagation(); };
 menuEl.onclick = () => menuEl.classList.remove('open');
@@ -1632,16 +1632,20 @@ const MUSIC = (() => {
   const NAMES = ['Off', 'Drift', 'Nebula', 'Skirmish', 'Siege'], LEVEL = 0.5;      // LEVEL = loudest the music gets (the volume slider scales it)
   let ac = null, bus = null, verb = null, cur = -1, live = [], timers = [], nbuf = null;
   const hz = n => 440 * Math.pow(2, (n - 69) / 12);          // midi note -> Hz
+  let tbus = null, irBuf = null;                           // every track gets its own output and its own reverb, so switching cuts the old track off at once
   function setup() {
     const c = SFX.ctx(); if (!c) return false; ac = c; if (bus) return true;
     bus = ac.createGain(); bus.gain.value = 0; bus.connect(ac.destination);
-    verb = ac.createConvolver(); const len = Math.floor(ac.sampleRate * 4), ir = ac.createBuffer(2, len, ac.sampleRate);   // a big, soft room
-    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
-    verb.buffer = ir; const wet = ac.createGain(); wet.gain.value = 0.8; verb.connect(wet); wet.connect(bus);
+    const len = Math.floor(ac.sampleRate * 4); irBuf = ac.createBuffer(2, len, ac.sampleRate);   // a big, soft room
+    for (let ch = 0; ch < 2; ch++) { const d = irBuf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
     nbuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); const nd = nbuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     return true;
   }
-  const wire = (node, wet) => { node.connect(bus); const g = ac.createGain(); g.gain.value = wet; node.connect(g); g.connect(verb); };
+  function chain() {
+    tbus = ac.createGain(); tbus.connect(bus); verb = ac.createConvolver(); verb.buffer = irBuf;
+    const wet = ac.createGain(); wet.gain.value = 0.8; verb.connect(wet); wet.connect(tbus);
+  }
+  const wire = (node, wet) => { node.connect(tbus); const g = ac.createGain(); g.gain.value = wet; node.connect(g); g.connect(verb); };
   function osc(type, f, vol, dest, detune) { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; if (detune) o.detune.value = detune; g.gain.value = vol; o.connect(g); g.connect(dest); o.start(); live.push(o); return o; }
   function lfo(rate, depth, param) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = rate; g.gain.value = depth; o.connect(g); g.connect(param); o.start(); live.push(o); }
   function pad(notes, dur, vol, at) {                      // a chord that swells up slowly and fades away again
@@ -1715,18 +1719,23 @@ const MUSIC = (() => {
       });
     }
   };
-  function stop() { timers.forEach(clearTimeout); timers = []; const l = live; live = []; setTimeout(() => l.forEach(o => { try { o.stop(); } catch (e) { /* already stopped */ } }), 2500); cur = -1; }
-  function apply() {                                       // start, switch or stop the track that is chosen
+  function stop() {                                        // cuts the track at once: no fade, no tail
+    timers.forEach(clearTimeout); timers = [];
+    for (const o of live) { try { o.stop(); } catch (e) { /* already stopped */ } } live = [];
+    if (tbus) { tbus.disconnect(); tbus = null; } cur = -1;
+  }
+  function apply(instant) {                                // start, switch or stop the track that is chosen
     if (!setup()) return; if (ac.state === 'suspended') ac.resume();
     const want = store.get('floodline_music', 1);
-    if (want !== cur) { stop(); if (want) TRACK[want](); cur = want; }
-    bus.gain.setTargetAtTime(want && !muted ? LEVEL * vols().music : 0, ac.currentTime, 0.6);
+    if (want !== cur) { stop(); if (want) { chain(); TRACK[want](); } cur = want; }
+    const target = want && !muted ? LEVEL * vols().music : 0;
+    bus.gain.cancelScheduledValues(ac.currentTime); bus.gain.setValueAtTime(target, ac.currentTime);   // no fades at all: volume, mute and track changes happen at once
   }
   function setTrack(n) { store.set('floodline_music', n); apply(); }
   return { apply, setTrack };
 })();
 const vols = () => Object.assign({ music: 0.8, sfx: 1 }, store.get('floodline_vol', {}));
-function setVol(k, v) { const o = vols(); o[k] = v; store.set('floodline_vol', o); if (k === 'sfx') SFX.setVol(v); else MUSIC.apply(); }
+function setVol(k, v) { const o = vols(); o[k] = v; store.set('floodline_vol', o); if (k === 'sfx') SFX.setVol(v); else MUSIC.apply(true); }
 SFX.setVol(vols().sfx);
 const optEl = document.getElementById('opt'); let optWasPaused = false;
 function optOpen() {
