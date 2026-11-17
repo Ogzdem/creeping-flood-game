@@ -255,23 +255,23 @@ const ROCK = 99, TPS = 30;
 const HEAL_BASE = 3;                    // the base heals slowly: 3 hp per ball, a ball every second at most (and never while flood lies on it or while it flies)
 const HEAL_COST = 1, HEAL_AMT = 10;   // one green ball repairs 10 hp and costs 1 energy
 const FLOODSMOKE = 'hsla(285,25%,80%,';
-const BURST_SEC = 2, WAVE_AMOUNT = 36;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
+const BURST_SEC = 2, WAVE_AMOUNT = 108;   // a flood source pours out its output in one big gush every BURST_SEC seconds instead of a steady trickle
 const BALL = 1;   // energy in every ball (building, ammunition and repairs are all 1 energy per ball)
 const FLOOD_IDLE_SEC = 10;   // invisible flood that lies completely still for this long dries up
 const FLOOD_HIDE = 0.012;   // a cell that is already visible stays visible down to this depth, so thin flood at the edge doesn't flicker on and off
 const FLOOD_VIS = 0.02;   // the thinnest flood there is: anything less is not drawn, not shot at, doesn't flow and doesn't hurt. Everything at or above it is all of those.
-const COLLECT_PER_CELL = 0.0016;   // the original gives 0.004 per square; our squares are 1.6 times smaller in each direction   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
+const COLLECT_PER_CELL = 0.001;   // the original gives 0.004 per square; its maps are 70 squares wide and ours 140, so our squares are half as wide   // energy per second for every cell of green area the Collectors cover: a Collector alone covers about 120 cells = about 0.14, half a map of green (7000 cells) gives about 8
 const BASE_CAP = 20, BASE_INCOME = 0.8, EMITTER_RATE = WAVE_AMOUNT / BURST_SEC, LAYER = 0.1, CONTOUR = 0.2, TS = 0.25, FLOW = 0.08, LEAK = 0.02;   // LAYER = depth at which a cell tips over a drop; CONTOUR = spacing of the shading lines   // every standard flood source is active from the start and produces at the same rate
 const TYPES = {
-  command:   { name: 'Ouroboros City', w: 10, h: 10, cost: 0, link: 8, hp: 450, ext: true },
-  collector: { name: 'Collector',   w: 5, h: 5, key: 1, cost: 10, time: 6,  link: 8, greenR: 7.2,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
-  relay:     { name: 'Relay',       w: 5, h: 5, key: 2, cost: 20, time: 10, link: 8, relayLink: 18, hp: 70, ext: true, noGreen: true, info: 'Reaches far – but only to other Relays' },
+  command:   { name: 'Ouroboros City', w: 10, h: 10, cost: 0, link: 10, hp: 450, ext: true },
+  collector: { name: 'Collector',   w: 5, h: 5, key: 1, cost: 10, time: 6,  link: 10, greenR: 8.3,  hp: 80, ext: true, info: 'Collects energy from the green area around it' },
+  relay:     { name: 'Relay',       w: 5, h: 5, key: 2, cost: 20, time: 10, link: 10, relayLink: 22, hp: 70, ext: true, noGreen: true, info: 'Reaches far – but only to other Relays' },
   storage:   { name: 'Storage',     w: 5, h: 5, key: 3, cost: 20, time: 8,  hp: 80, cap: 20, info: '+20 energy capacity' },
   booster:   { name: 'Speed',       w: 5, h: 5, key: 4, cost: 35, time: 10, hp: 80, info: 'Energy travels faster along the links' },
   reactor:   { name: 'Reactor',     w: 5, h: 5, key: 5, cost: 40, time: 20, hp: 80, yield: 0.3, info: 'Makes energy on its own, needs no green area' },
-  blaster:   { name: 'Blaster',     w: 5, h: 5, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 10,  cd: 0.16, dmg: 0.5, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
-  mortar:    { name: 'Mortar',      w: 5, h: 5, key: 7, cost: 50, time: 15, hp: 140, range: 14, cd: 1.0, dmg: 2, splash: 5, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
-  portal:    { name: 'Totem', w: 5, h: 5, cost: 10, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 8, info: 'Build it up to escape' }
+  blaster:   { name: 'Blaster',     w: 5, h: 5, key: 6, cost: 25, time: 8,  hp: 90,  info: 'Rapid fire – hits flood on its own level and below', range: 12,  cd: 0.16, dmg: 0.5, depthW: 8, ammoMax: 50, ammoPer: 5, ammoCost: 1 },
+  mortar:    { name: 'Mortar',      w: 5, h: 5, key: 7, cost: 50, time: 15, hp: 140, range: 18, cd: 1.0, dmg: 2, splash: 6, ammoMax: 300, ammoPer: 10, ammoCost: 1, ammoPerShot: 34, info: 'Heavy splash – hits any level' },
+  portal:    { name: 'Totem', w: 5, h: 5, cost: 10, time: 20, hp: 200, portal: true, ext: true, noGreen: true, link: 10, info: 'Build it up to escape' }
 };
 // ---------- hand-made terrain for the special maps (levels 0..10 in steps of 2: never a jump of more than one level) ----------
 function fortMaker(cx, cy, keep) {                        // a walled fortress: rings of ground climb to a wall with gates and corner towers; a low courtyard inside (and a raised keep)
@@ -981,8 +981,8 @@ function step() {
       {                                                         // shallow flood: 1 ccc on eight cells; deeper flood: 2 ccc on the target and 1 ccc on six neighbours (at most 8 ccc a shot)
         const CCC = 2 * TS, lvB = ter[b.y * W + b.x], deep = cr[ty * W + tx] > CCC + 1e-6;
         const take = (px, py, max) => { if (px < 0 || py < 0 || px >= W || py >= H) return; const j = py * W + px; if (ter[j] >= ROCK || ter[j] > lvB) return; cr[j] = Math.max(0, cr[j] - Math.min(cr[j], max)); };
-        for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) {           // deep flood: 2 ccc in the middle, 1 ccc around it; shallow: 1 ccc on a disc
-          const d = Math.hypot(xx, yy); if (deep) { if (d <= 1.2) take(tx + xx, ty + yy, 2 * CCC); else if (d <= 2.6) take(tx + xx, ty + yy, CCC); } else if (d <= 2.5) take(tx + xx, ty + yy, CCC);
+        for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 4; xx++) {           // deep flood: 2 ccc in the middle, 1 ccc around it; shallow: 1 ccc on a disc (the original's 8 squares = about 32 of ours)
+          const d = Math.hypot(xx, yy); if (deep) { if (d <= 1.2) take(tx + xx, ty + yy, 2 * CCC); else if (d <= 3.2) take(tx + xx, ty + yy, CCC); } else if (d <= 3.2) take(tx + xx, ty + yy, CCC);
         }
       }
       effects.push({ k: 'hole', x: tx + .5, y: ty + .5, r: 0.6, t: 0.5, max: 0.5, a: 0.5 }); puff(tx + .5, ty + .5, 1, 0.5, FLOODSMOKE, 0.4);   // feedback: a little hole and smoke where it hits
@@ -1036,8 +1036,8 @@ function drawEscape() {
 function landShell(sh) {
   const { T, tx, ty } = sh;
   effects.push({ k: 'ring', x: tx + .5, y: ty + .5, r: T.splash + 0.5, t: 0.4, max: 0.4 });
-  const CCC = 2 * TS, tl = ter[ty * W + tx];                  // a shell takes up to 4 ccc from each of about 36 original squares (90 of ours) on the target's level and below
-  for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 5; xx++) {
+  const CCC = 2 * TS, tl = ter[ty * W + tx];                  // a shell takes up to 4 ccc from each of 36 original squares (144 of ours) on the target's level and below
+  for (let yy = -5; yy <= 6; yy++) for (let xx = -5; xx <= 6; xx++) {
     const px = tx + xx, py = ty + yy; if (px < 0 || py < 0 || px >= W || py >= H) continue;
     const j = py * W + px; if (ter[j] >= ROCK || ter[j] > tl) continue; cr[j] = Math.max(0, cr[j] - Math.min(cr[j], 4 * CCC));
   }
@@ -1047,7 +1047,7 @@ function landShell(sh) {
 function shotGain(tx, ty, lvB, bcx, bcy) {                  // the Blaster's damage pattern without applying it (see the firing code)
   const CCC = 2 * TS, v = (px, py, max) => { if (px < 0 || py < 0 || px >= W || py >= H) return 0; const j = py * W + px; if (ter[j] >= ROCK || ter[j] > lvB) return 0; return Math.min(cr[j], max) / CCC; };
   const deep = cr[ty * W + tx] > CCC + 1e-6; let g = 0;
-  for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) { const d = Math.hypot(xx, yy); if (deep) { if (d <= 1.2) g += v(tx + xx, ty + yy, 2 * CCC); else if (d <= 2.6) g += v(tx + xx, ty + yy, CCC); } else if (d <= 2.5) g += v(tx + xx, ty + yy, CCC); }
+  for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 4; xx++) { const d = Math.hypot(xx, yy); if (deep) { if (d <= 1.2) g += v(tx + xx, ty + yy, 2 * CCC); else if (d <= 3.2) g += v(tx + xx, ty + yy, CCC); } else if (d <= 3.2) g += v(tx + xx, ty + yy, CCC); }
   return g;
 }
 function findTarget(b, T) {
