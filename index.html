@@ -1189,7 +1189,7 @@ function drawShip(col, on) {
 }
 const shCan = document.createElement('canvas');
 function drawRoundShadow(b, cx, cy, alpha) {               // a round shadow on the ground under a flying building
-  const r = TYPES[b.type].w * CS * 0.5; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(cx, cy, r, r, 0, 0, 7); ctx.fill(); ctx.restore();
+  const r = TYPES[b.type].w * CS * 0.3; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(cx, cy, r, r, 0, 0, 7); ctx.fill(); ctx.restore();
 }
 function drawShadowOf(b, cx, cy, sc, alpha, color, scY) {        // a silhouette (black by default) of the building itself, centred at pixel (cx, cy)
   const T = TYPES[b.type], sz = Math.ceil(T.w * CS * 2.2);
