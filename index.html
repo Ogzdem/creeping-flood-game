@@ -476,7 +476,7 @@ function loadLevel(i) {
   PAL = PALETTES[L.palette || 'gray'];
   ter = new Float32Array(W * H); cr = new Float32Array(W * H); nx = new Float32Array(W * H); lastCr = new Float32Array(W * H); fv = new Uint8Array(W * H); idleT = new Uint16Array(W * H);
   bmap = new Array(W * H).fill(null); buildings = []; emitters = []; effects = []; links = []; planLinks = []; packets = []; flyers = []; smoke = []; shells = []; esc = null;
-  capBonus = L.capBonus || 0; incBonus = L.incomeBonus || 0; rateMul = 1; cap = BASE_CAP + capBonus; energy = L.startEnergy || BASE_CAP; income = 0; depl = 0; defi = 0; covKey = ''; areaKey = ''; lvS.fill(0); score = 0; timeLoss = 0; produced = 0; lostValue = 0; lastParts = null; state = 'play'; tick = 0; dirty = true; disp = 0; sel = null; moving = null; tool = null;
+  capBonus = L.capBonus || 0; incBonus = L.incomeBonus || 0; rateMul = 1; cap = BASE_CAP + capBonus; energy = L.startEnergy || BASE_CAP; income = 0; depl = 0; defi = 0; covKey = ''; areaKey = ''; lvS.fill(0); score = 0; timeLoss = 0; produced = 0; lostValue = 0; lastParts = null; lastLaunch = -99; state = 'play'; tick = 0; dirty = true; disp = 0; sel = null; moving = null; tool = null;
   if (L.test) { buildTestMap(); renderTerrain(); hideMsg(); setPanel(); updateButtons(); return; }
   if (L.make) L.make(ter, L.seed); else {                   // special maps draw their own terrain
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -763,6 +763,7 @@ function flowStep() {
   for (let i = 0; i < W * H; i++) { cr[i] += nx[i]; if (cr[i] < 0) cr[i] = 0; }   // nothing evaporates: flood only disappears when shot
 }
 
+let lastLaunch = -99; const LAUNCH_GAP = Math.round(TPS / 5);   // the base sends at most 5 energy balls per second in all (one every 6 ticks)
 function hopFree(path) { const h = path[1]; return !h || !(h.launchT > 0); }      // is the first link of this route free to launch a ball into?
 function useHop(path) { if (path[1]) path[1].launchT = 0.14; }      // at most one ball every 0.14 s into the same first link
 function pathOf(b) { const p = []; for (let q = b; q; q = q.parent) p.unshift(q); return p; }
@@ -863,10 +864,11 @@ function step() {
     }
     reqs.sort((p, q) => (p.b.lastServed || 0) - (q.b.lastServed || 0));   // turn-taking: whoever has waited longest gets the next ball
     for (const r of reqs) {
+      if (tick - lastLaunch < LAUNCH_GAP) break;
       const b = r.b, T = TYPES[b.type];
       if (energy < r.cost) { deficitTick += (r.kind === 'build' ? T.cost / T.time : r.kind === 'ammo' ? r.cost * 3 : r.cost) * dt; continue; }   // wanted a ball the bank couldn't give
       const path = pathOf(b); if (!hopFree(path)) continue;
-      useHop(path); energy -= r.cost; spentTick += r.cost; b.lastServed = tick;
+      useHop(path); lastLaunch = tick; energy -= r.cost; spentTick += r.cost; b.lastServed = tick;
       let pk;
       if (r.kind === 'build') { b.inflightE += r.cost; b.sendCd = BALL / (T.cost / T.time); pk = { kind: 'build', path, target: b, amt: r.cost, s: 0 }; }   // balls per second follow the build speed
       else if (r.kind === 'ammo') { b.inflight += T.ammoPer; pk = { kind: 'ammo', path, target: b, amt: T.ammoPer, s: 0 }; }
